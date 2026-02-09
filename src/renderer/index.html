@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder Widget</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Error Display -->
+    <div id="error-display" class="error-display hidden">
+        <div class="error-icon">⚠</div>
+        <div id="error-message" class="error-message"></div>
+        <button id="error-close-btn" class="error-close-btn">×</button>
+    </div>
+
+    <!-- Compact Mode: Initial state with just two buttons -->
+    <div id="compact-controls" class="compact-controls">
+        <div class="drag-handle"></div>
+        <button id="record-btn" class="icon-btn record-btn" aria-label="Start Recording">
+            <div class="record-icon"></div>
+            <span class="tooltip">start recording</span>
+        </button>
+        <button id="list-btn" class="icon-btn list-btn" aria-label="View Recordings">
+            <div class="list-icon">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span class="tooltip">past recordings</span>
+        </button>
+    </div>
+
+    <!-- Recording Mode: Expanded horizontal panel with waveform and controls -->
+    <div id="recording-panel" class="recording-panel hidden">
+        <div class="drag-handle"></div>
+        <canvas id="waveform-canvas" class="waveform-canvas"></canvas>
+        <div id="recording-time" class="recording-time">00:00</div>
+        <button id="pause-recording-btn" class="control-btn pause-btn">
+            <div class="pause-icon">
+                <span></span>
+                <span></span>
+            </div>
+        </button>
+        <button id="done-recording-btn" class="control-btn done-btn">
+            <div class="done-icon">■</div>
+        </button>
+    </div>
+
+    <!-- Recordings List Panel -->
+    <div id="recordings-panel" class="recordings-panel hidden">
+        <div class="drag-handle"></div>
+        <div class="panel-header">
+            <h3>recent recordings</h3>
+            <button id="close-list-btn" class="close-btn">×</button>
+        </div>
+        <div id="recordings-list" class="recordings-list">
+            <!-- Recordings will be dynamically inserted here -->
+        </div>
+        <button id="see-more-btn" class="see-more-btn">see more</button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="audio-recorder.js"></script>
+    <script src="widget.js"></script>
+</body>
+</html>
