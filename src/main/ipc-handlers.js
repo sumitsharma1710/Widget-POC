@@ -1,8 +1,12 @@
-const { ipcMain, shell } = require("electron");
+const { ipcMain, shell, BrowserWindow } = require("electron");
 const {
   getWidgetWindow,
   expandWidget,
   collapseWidget,
+  setCompactMode,
+  setRecordingMode,
+  setListMode,
+  setErrorMode,
 } = require("./widget-window");
 const { setRecordingState } = require("./tray");
 const {
@@ -135,6 +139,30 @@ function setupIpcHandlers() {
     const widgetWindow = getWidgetWindow();
     if (widgetWindow) {
       widgetWindow.hide();
+    }
+  });
+
+  ipcMain.on("set-ignore-mouse-events", (event, ignore, options) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      win.setIgnoreMouseEvents(ignore, options);
+    }
+  });
+
+  ipcMain.on("resize-window", (event, mode) => {
+    switch (mode) {
+      case "compact":
+        setCompactMode();
+        break;
+      case "recording":
+        setRecordingMode();
+        break;
+      case "list":
+        setListMode();
+        break;
+      case "error":
+        setErrorMode();
+        break;
     }
   });
 

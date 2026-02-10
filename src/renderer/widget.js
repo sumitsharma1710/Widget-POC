@@ -89,6 +89,11 @@ class Widget {
   showError(message) {
     this.errorMessage.textContent = message;
     this.errorDisplay.classList.remove("hidden");
+
+    // Resize window if needed (unless list is open via list mode)
+    if (this.recordingsPanel.classList.contains("hidden")) {
+      window.electronAPI.resizeWindow("error");
+    }
   }
 
   /**
@@ -96,6 +101,15 @@ class Widget {
    */
   hideError() {
     this.errorDisplay.classList.add("hidden");
+
+    // Restore window size based on current state
+    if (!this.recordingsPanel.classList.contains("hidden")) {
+      // List is open, size is fine
+    } else if (this.isRecording) {
+      window.electronAPI.resizeWindow("recording");
+    } else {
+      window.electronAPI.resizeWindow("compact");
+    }
   }
 
   /**
@@ -121,10 +135,25 @@ class Widget {
       this.recordingStartTime = Date.now();
       this.showRecordingPanel();
       this.startTimer();
+
+      // Reset pause button icon to show pause bars
+      this.resetPauseButton();
     } catch (error) {
       console.error("Failed to start recording:", error);
       this.showError(error.message);
     }
+  }
+
+  /**
+   * Reset pause button to initial pause icon state
+   */
+  resetPauseButton() {
+    const pauseIcon = this.pauseRecordingBtn.querySelector(".pause-icon");
+    pauseIcon.style.cssText = "";
+    pauseIcon.innerHTML = `
+      <span></span>
+      <span></span>
+    `;
   }
 
   /**
@@ -135,17 +164,19 @@ class Widget {
       // Resume
       this.audioRecorder.resume();
       this.isPaused = false;
-      this.pauseRecordingBtn.querySelector(".pause-icon").innerHTML = `
-        <span></span>
-        <span></span>
-      `;
+      this.startTimer(); // Resume timer
+
+      // Reset to pause icon
+      this.resetPauseButton();
     } else {
       // Pause
       this.audioRecorder.pause();
       this.isPaused = true;
+      this.stopTimer(); // Stop timer when paused
+
       // Change to play icon when paused
-      this.pauseRecordingBtn.querySelector(".pause-icon").innerHTML = ``;
-      this.pauseRecordingBtn.querySelector(".pause-icon").style.cssText = `
+      const pauseIcon = this.pauseRecordingBtn.querySelector(".pause-icon");
+      pauseIcon.style.cssText = `
         width: 0;
         height: 0;
         border-left: 10px solid #ffc107;
@@ -153,6 +184,7 @@ class Widget {
         border-bottom: 6px solid transparent;
         margin-left: 3px;
       `;
+      pauseIcon.innerHTML = "";
     }
   }
 
@@ -195,20 +227,32 @@ class Widget {
    * Show recording panel with waveform
    */
   showRecordingPanel() {
-    this.compactControls.classList.add("hidden");
-    this.recordingPanel.classList.remove("hidden");
+    // Resize window FIRST, then show panel
+    window.electronAPI.resizeWindow("recording");
 
-    // Set canvas size
-    this.waveformCanvas.width = 180;
-    this.waveformCanvas.height = 32;
+    // Small delay to ensure resize completes
+    setTimeout(() => {
+      this.compactControls.classList.add("hidden");
+      this.recordingPanel.classList.remove("hidden");
+
+      // Set canvas size
+      this.waveformCanvas.width = 180;
+      this.waveformCanvas.height = 32;
+    }, 50);
   }
 
   /**
    * Hide recording panel
    */
   hideRecordingPanel() {
+    // Hide panels FIRST
     this.recordingPanel.classList.add("hidden");
     this.compactControls.classList.remove("hidden");
+
+    // Then resize window back to compact mode
+    setTimeout(() => {
+      window.electronAPI.resizeWindow("compact");
+    }, 50);
   }
 
   /**
@@ -238,14 +282,22 @@ class Widget {
    */
   async showRecordingsList() {
     await this.loadRecordings();
-    this.compactControls.classList.add("hidden");
-    this.recordingsPanel.classList.remove("hidden");
+
+    // Resize window FIRST
+    window.electronAPI.resizeWindow("list");
+
+    // Then show panel after small delay
+    setTimeout(() => {
+      this.compactControls.classList.add("hidden");
+      this.recordingsPanel.classList.remove("hidden");
+    }, 50);
   }
 
   /**
    * Hide recordings list panel
    */
   hideRecordingsList() {
+    // Hide panels FIRST
     this.recordingsPanel.classList.add("hidden");
     this.compactControls.classList.remove("hidden");
 
@@ -254,6 +306,11 @@ class Widget {
       this.currentAudio.pause();
       this.clearPlaybackTimers();
     }
+
+    // Resize window back to compact mode after hiding
+    setTimeout(() => {
+      window.electronAPI.resizeWindow("compact");
+    }, 50);
   }
 
   /**

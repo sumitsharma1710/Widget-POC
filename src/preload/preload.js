@@ -23,4 +23,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Window controls
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
   closeWindow: () => ipcRenderer.send("window:close"),
+  resizeWindow: (mode) => ipcRenderer.send("resize-window", mode),
+  setIgnoreMouseEvents: (ignore, options) =>
+    ipcRenderer.send("set-ignore-mouse-events", ignore, options),
 });

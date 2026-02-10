@@ -1,11 +1,10 @@
-const { BrowserWindow, screen } = require("electron");
+const { BrowserWindow, screen, ipcMain } = require("electron");
 const path = require("path");
-const { setupPermissionHandlers } = require("./permission");
 
 let widgetWindow = null;
 
 /**
- * Create the floating widget window
+ * Create the widget window
  */
 function createWidgetWindow(preferences, savePreferences) {
   // Get primary display dimensions
@@ -14,12 +13,12 @@ function createWidgetWindow(preferences, savePreferences) {
     primaryDisplay.workAreaSize;
 
   // Widget dimensions - start compact
-  const widgetWidth = 340;
-  const widgetHeight = 400;
+  const widgetWidth = 100;
+  const widgetHeight = 60;
 
-  // Position in bottom-right corner with padding
-  const x = screenWidth - widgetWidth - 20;
-  const y = screenHeight - widgetHeight - 20;
+  // Position at center-top of screen (default)
+  const x = Math.floor((screenWidth - widgetWidth) / 2);
+  const y = 20; // 20px from top
 
   widgetWindow = new BrowserWindow({
     width: widgetWidth,
@@ -29,9 +28,9 @@ function createWidgetWindow(preferences, savePreferences) {
     frame: false, // Frameless window
     transparent: true, // Allow transparent background
     alwaysOnTop: true, // Float above other windows
-    resizable: false, // Fixed size
+    resizable: false, // Fixed size initially
     skipTaskbar: true, // Don't show in taskbar
-    show: true, // Show immediately
+    show: false, // Don't show until ready
     hasShadow: true, // Window shadow
     webPreferences: {
       preload: path.join(__dirname, "../preload/preload.js"),
@@ -41,11 +40,14 @@ function createWidgetWindow(preferences, savePreferences) {
     },
   });
 
-  // Setup permissions
-  setupPermissionHandlers(widgetWindow, preferences, savePreferences);
-
-  // Load the widget HTML
+  // Load the index.html file
   widgetWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
+
+  // Show window when ready
+  widgetWindow.once("ready-to-show", () => {
+    widgetWindow.show();
+    setCompactMode(); // Ensure compact mode on start
+  });
 
   // Handle window close - hide instead of destroy
   widgetWindow.on("close", (event) => {
@@ -71,17 +73,16 @@ function getWidgetWindow() {
 }
 
 /**
- * Show the widget window
+ * Show the widget
  */
 function showWidget() {
   if (widgetWindow) {
     widgetWindow.show();
-    widgetWindow.focus();
   }
 }
 
 /**
- * Hide the widget window
+ * Hide the widget
  */
 function hideWidget() {
   if (widgetWindow) {
@@ -98,7 +99,6 @@ function toggleWidget() {
       widgetWindow.hide();
     } else {
       widgetWindow.show();
-      widgetWindow.focus();
     }
   }
 }
@@ -108,7 +108,19 @@ function toggleWidget() {
  */
 function setCompactMode() {
   if (widgetWindow) {
-    widgetWindow.setSize(100, 60, true);
+    const newWidth = 100;
+    const newHeight = 60;
+
+    // Get current position
+    const [x, y] = widgetWindow.getPosition();
+
+    // Force resizable to update bounds
+    widgetWindow.setResizable(true);
+    widgetWindow.setSize(newWidth, newHeight, true);
+    widgetWindow.setResizable(false);
+
+    // Restore position
+    widgetWindow.setPosition(x, y, true);
   }
 }
 
@@ -117,7 +129,19 @@ function setCompactMode() {
  */
 function setRecordingMode() {
   if (widgetWindow) {
-    widgetWindow.setSize(320, 60, true);
+    const newWidth = 360;
+    const newHeight = 60;
+
+    // Get current position
+    const [x, y] = widgetWindow.getPosition();
+
+    // Force resizable to update bounds
+    widgetWindow.setResizable(true);
+    widgetWindow.setSize(newWidth, newHeight, true);
+    widgetWindow.setResizable(false);
+
+    // Restore position
+    widgetWindow.setPosition(x, y, true);
   }
 }
 
@@ -126,7 +150,40 @@ function setRecordingMode() {
  */
 function setListMode() {
   if (widgetWindow) {
-    widgetWindow.setSize(350, 450, true);
+    const newWidth = 330;
+    const newHeight = 370;
+
+    // Get current position
+    const [x, y] = widgetWindow.getPosition();
+
+    // Force resizable to update bounds
+    widgetWindow.setResizable(true);
+    widgetWindow.setSize(newWidth, newHeight, true);
+    widgetWindow.setResizable(false);
+
+    // Restore position
+    widgetWindow.setPosition(x, y, true);
+  }
+}
+
+/**
+ * Set widget to error mode (expanded for message visibility)
+ */
+function setErrorMode() {
+  if (widgetWindow) {
+    const newWidth = 340;
+    const newHeight = 120; // Sufficient height for multiline error
+
+    // Get current position
+    const [x, y] = widgetWindow.getPosition();
+
+    // Force resizable to update bounds
+    widgetWindow.setResizable(true);
+    widgetWindow.setSize(newWidth, newHeight, true);
+    widgetWindow.setResizable(false);
+
+    // Restore position
+    widgetWindow.setPosition(x, y, true);
   }
 }
 
@@ -145,12 +202,12 @@ function collapseWidget() {
 }
 
 /**
- * Force close the widget (for app quit)
+ * Destroy the widget window completely (for app quit)
  */
 function destroyWidget() {
-  if (widgetWindow) {
+  if (widgetWindow && !widgetWindow.isDestroyed()) {
     widgetWindow.forceClose = true;
-    widgetWindow.close();
+    widgetWindow.destroy();
     widgetWindow = null;
   }
 }
@@ -164,6 +221,7 @@ module.exports = {
   setCompactMode,
   setRecordingMode,
   setListMode,
+  setErrorMode,
   expandWidget,
   collapseWidget,
   destroyWidget,

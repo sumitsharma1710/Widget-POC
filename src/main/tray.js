@@ -1,6 +1,11 @@
-const { Tray, Menu, nativeImage, app } = require('electron');
-const path = require('path');
-const { showWidget, hideWidget, toggleWidget, destroyWidget } = require('./widget-window');
+const { Tray, Menu, nativeImage, app } = require("electron");
+const path = require("path");
+const {
+  showWidget,
+  hideWidget,
+  toggleWidget,
+  destroyWidget,
+} = require("./widget-window");
 
 let tray = null;
 let isRecording = false;
@@ -10,8 +15,8 @@ let isRecording = false;
  */
 function createTray() {
   // Create tray icon (use a simple red circle for now, we'll create proper icons later)
-  const iconPath = path.join(__dirname, '../../assets/tray-icon.png');
-  
+  const iconPath = path.join(__dirname, "../../assets/tray-icon.png");
+
   // Create a default icon if file doesn't exist
   let trayIcon;
   try {
@@ -22,21 +27,21 @@ function createTray() {
   } catch (e) {
     trayIcon = createDefaultIcon();
   }
-  
+
   // Resize for tray (16x16 on most platforms)
   trayIcon = trayIcon.resize({ width: 16, height: 16 });
-  
+
   tray = new Tray(trayIcon);
-  tray.setToolTip('Floating Meeting Widget');
-  
+  tray.setToolTip("Floating Meeting Widget");
+
   // Build context menu
   updateTrayMenu();
-  
+
   // Click to toggle widget
-  tray.on('click', () => {
+  tray.on("click", () => {
     toggleWidget();
   });
-  
+
   return tray;
 }
 
@@ -54,9 +59,9 @@ function createDefaultIcon() {
       <rect x="10" y="24" width="12" height="2" rx="1" fill="white"/>
     </svg>
   `;
-  
+
   return nativeImage.createFromDataURL(
-    `data:image/svg+xml;base64,${Buffer.from(canvas).toString('base64')}`
+    `data:image/svg+xml;base64,${Buffer.from(canvas).toString("base64")}`,
   );
 }
 
@@ -71,9 +76,9 @@ function createRecordingIcon() {
       <circle cx="16" cy="16" r="6" fill="white"/>
     </svg>
   `;
-  
+
   return nativeImage.createFromDataURL(
-    `data:image/svg+xml;base64,${Buffer.from(canvas).toString('base64')}`
+    `data:image/svg+xml;base64,${Buffer.from(canvas).toString("base64")}`,
   );
 }
 
@@ -83,27 +88,27 @@ function createRecordingIcon() {
 function updateTrayMenu() {
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Show Widget',
-      click: () => showWidget()
+      label: "Show Widget",
+      click: () => showWidget(),
     },
     {
-      label: isRecording ? 'Recording...' : 'Start Recording',
+      label: isRecording ? "Recording..." : "Start Recording",
       enabled: !isRecording,
       click: () => {
         showWidget();
         // Trigger recording start via widget
-      }
+      },
     },
-    { type: 'separator' },
+    { type: "separator" },
     {
-      label: 'Quit',
+      label: "Quit",
       click: () => {
         destroyWidget();
         app.quit();
-      }
-    }
+      },
+    },
   ]);
-  
+
   tray.setContextMenu(contextMenu);
 }
 
@@ -112,17 +117,17 @@ function updateTrayMenu() {
  */
 function setRecordingState(recording) {
   isRecording = recording;
-  
+
   if (tray) {
     let icon;
     if (recording) {
       icon = createRecordingIcon();
-      tray.setToolTip('Recording in progress...');
+      tray.setToolTip("Recording in progress...");
     } else {
       icon = createDefaultIcon();
-      tray.setToolTip('Floating Meeting Widget');
+      tray.setToolTip("Floating Meeting Widget");
     }
-    
+
     icon = icon.resize({ width: 16, height: 16 });
     tray.setImage(icon);
     updateTrayMenu();
@@ -140,5 +145,5 @@ module.exports = {
   createTray,
   getTray,
   setRecordingState,
-  updateTrayMenu
+  updateTrayMenu,
 };

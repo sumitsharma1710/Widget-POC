@@ -8,15 +8,17 @@
 </head>
 <body>
     <!-- Error Display -->
-    <div id="error-display" class="error-display hidden">
-        <div class="error-icon">⚠</div>
-        <div id="error-message" class="error-message"></div>
+    <div id="error-display" class="error-display hidden interactive">
+        <div class="error-icon">⚠️</div>
+        <div id="error-message" class="error-message">Error message here</div>
         <button id="error-close-btn" class="error-close-btn">×</button>
     </div>
 
     <!-- Compact Mode: Initial state with just two buttons -->
-    <div id="compact-controls" class="compact-controls">
-        <div class="drag-handle"></div>
+    <div id="compact-controls" class="compact-controls interactive">
+        <div class="drag-handle">
+            <div class="drag-dots"></div>
+        </div>
         <button id="record-btn" class="icon-btn record-btn" aria-label="Start Recording">
             <div class="record-icon"></div>
             <span class="tooltip">start recording</span>
@@ -32,8 +34,10 @@
     </div>
 
     <!-- Recording Mode: Expanded horizontal panel with waveform and controls -->
-    <div id="recording-panel" class="recording-panel hidden">
-        <div class="drag-handle"></div>
+    <div id="recording-panel" class="recording-panel hidden interactive">
+        <div class="drag-handle">
+            <div class="drag-dots"></div>
+        </div>
         <canvas id="waveform-canvas" class="waveform-canvas"></canvas>
         <div id="recording-time" class="recording-time">00:00</div>
         <button id="pause-recording-btn" class="control-btn pause-btn">
