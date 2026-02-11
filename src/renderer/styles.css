@@ -36,7 +36,7 @@ button {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(10px);
   border-radius: 20px;
-  transition: opacity 1s ease, transform 1s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .compact-controls.hidden {
@@ -70,7 +70,7 @@ button {
   backdrop-filter: blur(10px);
   border-radius: 12px;
   color: #fff;
-  transition: all 0.5s ease;
+  transition: all 0.3s ease;
   z-index: 2000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   min-height: 40px;
@@ -200,7 +200,7 @@ button {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(10px);
   border-radius: 20px;
-  transition: opacity 1s ease, transform 1s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
   min-width: 320px;
 }
 
@@ -296,7 +296,7 @@ button {
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 16px;
-  transition: opacity 1s ease, transform 1s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
   display: flex;
   flex-direction: column;
 }

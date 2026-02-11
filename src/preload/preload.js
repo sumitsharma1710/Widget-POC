@@ -26,4 +26,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   resizeWindow: (mode) => ipcRenderer.send("resize-window", mode),
   setIgnoreMouseEvents: (ignore, options) =>
     ipcRenderer.send("set-ignore-mouse-events", ignore, options),
+
+  // Events
+  onRecoveryFound: (callback) =>
+    ipcRenderer.on("recording:recovery-found", (_event, value) =>
+      callback(value),
+    ),
 });

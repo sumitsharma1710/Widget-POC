@@ -8,7 +8,11 @@ const {
 } = require("./widget-window");
 const { createTray } = require("./tray");
 const { setupIpcHandlers } = require("./ipc-handlers");
-const { initStorage, checkForRecovery } = require("./storage");
+const {
+  initStorage,
+  checkForRecovery,
+  recoverRecording,
+} = require("./storage");
 const { requestSystemPermissions } = require("./permission");
 const { savePreferences, loadPreferences } = require("./preferences");
 
@@ -48,7 +52,18 @@ if (!gotTheLock) {
     const recoveryData = await checkForRecovery();
     if (recoveryData) {
       console.log("Found incomplete recording from previous session");
-      // TODO: Show recovery dialog
+      try {
+        const recovered = await recoverRecording(recoveryData);
+        // We'll notify the window after it's created
+        setTimeout(() => {
+          const win = getWidgetWindow();
+          if (win) {
+            win.webContents.send("recording:recovery-found", recovered);
+          }
+        }, 2000); // Give UI time to load
+      } catch (error) {
+        console.error("Failed to recover recording:", error);
+      }
     }
 
     // Setup IPC handlers first

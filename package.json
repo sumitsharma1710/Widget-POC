@@ -4,7 +4,7 @@
   "description": "Floating Meeting Widget POC - Audio recording for physical meetings",
   "main": "src/main/main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "electron . --no-sandbox",
     "dev": "electron . --enable-logging --no-sandbox"
   },
   "keywords": [

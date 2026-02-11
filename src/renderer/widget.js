@@ -10,6 +10,8 @@ class Widget {
     this.isRecording = false;
     this.isPaused = false;
     this.recordingStartTime = null;
+    this.pausedDuration = 0;
+    this.lastPauseTime = null;
     this.timerInterval = null;
     this.playbackTimers = new Map(); // Track playback timers for each recording
     this.recordings = [];
@@ -81,6 +83,17 @@ class Widget {
 
     // Cleanup on window unload
     window.addEventListener("beforeunload", () => this.cleanup());
+
+    // Listen for recovery
+    if (window.electronAPI.onRecoveryFound) {
+      window.electronAPI.onRecoveryFound((recording) => {
+        console.log("Recovered recording:", recording);
+        this.loadRecordings();
+        this.showError("Recovered interrupted recording");
+        // Auto-hide after 3 seconds
+        setTimeout(() => this.hideError(), 3000);
+      });
+    }
   }
 
   /**
@@ -133,6 +146,8 @@ class Widget {
       this.isRecording = true;
       this.isPaused = false;
       this.recordingStartTime = Date.now();
+      this.pausedDuration = 0;
+      this.lastPauseTime = null;
       this.showRecordingPanel();
       this.startTimer();
 
@@ -164,6 +179,14 @@ class Widget {
       // Resume
       this.audioRecorder.resume();
       this.isPaused = false;
+
+      // Calculate pause duration
+      if (this.lastPauseTime) {
+        const pauseDuration = Date.now() - this.lastPauseTime;
+        this.pausedDuration += pauseDuration;
+        this.lastPauseTime = null;
+      }
+
       this.startTimer(); // Resume timer
 
       // Reset to pause icon
@@ -172,6 +195,7 @@ class Widget {
       // Pause
       this.audioRecorder.pause();
       this.isPaused = true;
+      this.lastPauseTime = Date.now();
       this.stopTimer(); // Stop timer when paused
 
       // Change to play icon when paused
@@ -194,7 +218,7 @@ class Widget {
   async handleDone() {
     try {
       const duration = Math.floor(
-        (Date.now() - this.recordingStartTime) / 1000,
+        (Date.now() - this.recordingStartTime - this.pausedDuration) / 1000,
       );
 
       // Stop audio recorder
@@ -214,6 +238,8 @@ class Widget {
       this.isRecording = false;
       this.isPaused = false;
       this.recordingStartTime = null;
+      this.pausedDuration = 0;
+      this.lastPauseTime = null;
 
       // Reload recordings list
       await this.loadRecordings();
@@ -227,32 +253,31 @@ class Widget {
    * Show recording panel with waveform
    */
   showRecordingPanel() {
-    // Resize window FIRST, then show panel
+    // Resize window FIRST
     window.electronAPI.resizeWindow("recording");
 
-    // Small delay to ensure resize completes
-    setTimeout(() => {
-      this.compactControls.classList.add("hidden");
-      this.recordingPanel.classList.remove("hidden");
+    // Show panel immediately - CSS transition (0.3s) handles the fade in
+    this.compactControls.classList.add("hidden");
+    this.recordingPanel.classList.remove("hidden");
 
-      // Set canvas size
-      this.waveformCanvas.width = 180;
-      this.waveformCanvas.height = 32;
-    }, 50);
+    // Set canvas size
+    this.waveformCanvas.width = 180;
+    this.waveformCanvas.height = 32;
   }
 
   /**
    * Hide recording panel
    */
   hideRecordingPanel() {
-    // Hide panels FIRST
+    // Hide panels FIRST (Trigger CSS fade out)
     this.recordingPanel.classList.add("hidden");
     this.compactControls.classList.remove("hidden");
 
-    // Then resize window back to compact mode
+    // Wait for transition to almost complete (250ms) before resizing
+    // CSS transition is 300ms, so this resize happens just as it fades out
     setTimeout(() => {
       window.electronAPI.resizeWindow("compact");
-    }, 50);
+    }, 250);
   }
 
   /**
@@ -260,7 +285,9 @@ class Widget {
    */
   startTimer() {
     this.timerInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+      const elapsed = Math.floor(
+        (Date.now() - this.recordingStartTime - this.pausedDuration) / 1000,
+      );
       const minutes = Math.floor(elapsed / 60);
       const seconds = elapsed % 60;
       this.recordingTime.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
@@ -286,11 +313,9 @@ class Widget {
     // Resize window FIRST
     window.electronAPI.resizeWindow("list");
 
-    // Then show panel after small delay
-    setTimeout(() => {
-      this.compactControls.classList.add("hidden");
-      this.recordingsPanel.classList.remove("hidden");
-    }, 50);
+    // Show immediately
+    this.compactControls.classList.add("hidden");
+    this.recordingsPanel.classList.remove("hidden");
   }
 
   /**
@@ -307,10 +332,10 @@ class Widget {
       this.clearPlaybackTimers();
     }
 
-    // Resize window back to compact mode after hiding
+    // Wait for transition to almost complete (250ms) before resizing
     setTimeout(() => {
       window.electronAPI.resizeWindow("compact");
-    }, 50);
+    }, 250);
   }
 
   /**

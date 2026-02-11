@@ -104,6 +104,45 @@ function toggleWidget() {
 }
 
 /**
+ * Helper to ensure window stays within screen bounds
+ */
+function ensureOnScreen(win, newWidth, newHeight) {
+  const { x, y } = win.getBounds();
+  const display = screen.getDisplayMatching({
+    x,
+    y,
+    width: newWidth,
+    height: newHeight,
+  });
+  const workArea = display.workArea;
+
+  let newX = x;
+  let newY = y;
+
+  // Check right edge
+  if (newX + newWidth > workArea.x + workArea.width) {
+    newX = workArea.x + workArea.width - newWidth - 10; // 10px padding
+  }
+
+  // Check left edge
+  if (newX < workArea.x) {
+    newX = workArea.x + 10;
+  }
+
+  // Check bottom edge
+  if (newY + newHeight > workArea.y + workArea.height) {
+    newY = workArea.y + workArea.height - newHeight - 10;
+  }
+
+  // Check top edge
+  if (newY < workArea.y) {
+    newY = workArea.y + 10;
+  }
+
+  return { x: newX, y: newY };
+}
+
+/**
  * Set widget to compact mode (initial state - just buttons)
  */
 function setCompactMode() {
@@ -111,15 +150,14 @@ function setCompactMode() {
     const newWidth = 100;
     const newHeight = 60;
 
-    // Get current position
-    const [x, y] = widgetWindow.getPosition();
+    const { x, y } = ensureOnScreen(widgetWindow, newWidth, newHeight);
 
     // Force resizable to update bounds
     widgetWindow.setResizable(true);
     widgetWindow.setSize(newWidth, newHeight, true);
     widgetWindow.setResizable(false);
 
-    // Restore position
+    // Restore/Update position
     widgetWindow.setPosition(x, y, true);
   }
 }
@@ -132,15 +170,14 @@ function setRecordingMode() {
     const newWidth = 360;
     const newHeight = 60;
 
-    // Get current position
-    const [x, y] = widgetWindow.getPosition();
+    const { x, y } = ensureOnScreen(widgetWindow, newWidth, newHeight);
 
     // Force resizable to update bounds
     widgetWindow.setResizable(true);
     widgetWindow.setSize(newWidth, newHeight, true);
     widgetWindow.setResizable(false);
 
-    // Restore position
+    // Restore/Update position
     widgetWindow.setPosition(x, y, true);
   }
 }
@@ -153,15 +190,14 @@ function setListMode() {
     const newWidth = 330;
     const newHeight = 370;
 
-    // Get current position
-    const [x, y] = widgetWindow.getPosition();
+    const { x, y } = ensureOnScreen(widgetWindow, newWidth, newHeight);
 
     // Force resizable to update bounds
     widgetWindow.setResizable(true);
     widgetWindow.setSize(newWidth, newHeight, true);
     widgetWindow.setResizable(false);
 
-    // Restore position
+    // Restore/Update position
     widgetWindow.setPosition(x, y, true);
   }
 }
@@ -174,15 +210,14 @@ function setErrorMode() {
     const newWidth = 340;
     const newHeight = 120; // Sufficient height for multiline error
 
-    // Get current position
-    const [x, y] = widgetWindow.getPosition();
+    const { x, y } = ensureOnScreen(widgetWindow, newWidth, newHeight);
 
     // Force resizable to update bounds
     widgetWindow.setResizable(true);
     widgetWindow.setSize(newWidth, newHeight, true);
     widgetWindow.setResizable(false);
 
-    // Restore position
+    // Restore/Update position
     widgetWindow.setPosition(x, y, true);
   }
 }
