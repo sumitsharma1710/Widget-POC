@@ -91,6 +91,14 @@ function hideWidget() {
 }
 
 /**
+ * check widget visible or not
+ */
+function isWidgetVisible() {
+  if (!widgetWindow || widgetWindow.isDestroyed()) return false;
+  return widgetWindow.isVisible();
+}
+
+/**
  * Toggle widget visibility
  */
 function toggleWidget() {
@@ -252,6 +260,7 @@ module.exports = {
   getWidgetWindow,
   showWidget,
   hideWidget,
+  isWidgetVisible,
   toggleWidget,
   setCompactMode,
   setRecordingMode,
