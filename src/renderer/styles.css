@@ -81,6 +81,8 @@ button {
   z-index: 2000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   min-height: 40px;
+  max-height: 50px;
+  overflow: auto;
 }
 
 .error-display.hidden {
@@ -172,27 +174,6 @@ button {
   height: 2px;
   background: #fff;
   border-radius: 1px;
-}
-
-/* Tooltips */
-.tooltip {
-  position: absolute;
-  bottom: -30px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.9);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-
-.icon-btn:hover .tooltip {
-  opacity: 1;
 }
 
 /* Recording Panel - Pill Widget Container */
@@ -328,6 +309,7 @@ button {
 
 .action-btn.btn-cancel {
   color: rgba(248, 113, 113, 1);
+  transition: all 0.3s ease;
 }
 .action-btn.btn-cancel:hover {
   color: #ffffff;
@@ -336,6 +318,7 @@ button {
 
 .action-btn.btn-finish {
   color: #4ade80;
+  transition: all 0.3s ease;
 }
 .action-btn.btn-finish:hover {
   color: #ffffff;

@@ -423,7 +423,7 @@ class Widget {
     // CSS transition is 300ms, so this resize happens just as it fades out
     setTimeout(() => {
       window.electronAPI.resizeWindow("compact");
-    }, 250);
+    }, 300);
   }
 
   /**
@@ -481,7 +481,7 @@ class Widget {
     // Wait for transition to almost complete (250ms) before resizing
     setTimeout(() => {
       window.electronAPI.resizeWindow("compact");
-    }, 250);
+    }, 300);
   }
 
   /**

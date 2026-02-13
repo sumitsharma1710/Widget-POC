@@ -11,7 +11,18 @@
 <body>
     <!-- Error Display -->
     <div id="error-display" class="error-display hidden interactive">
-        <div class="error-icon">⚠️</div>
+        <div class="error-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <!-- Triangle -->
+                <path d="M12 2L2 20H22L12 2Z" fill="#FFC107" />
+
+                <!-- Exclamation line -->
+                <rect x="11" y="8" width="2" height="6" fill="#000000" />
+
+                <!-- Exclamation dot -->
+                <circle cx="12" cy="17" r="1.5" fill="#000000" />
+            </svg>
+        </div>
         <div id="error-message" class="error-message">Error message here</div>
         <button id="error-close-btn" class="error-close-btn">×</button>
     </div>
@@ -21,17 +32,15 @@
         <div class="drag-handle">
             <div class="drag-dots"></div>
         </div>
-        <button id="record-btn" class="icon-btn record-btn" aria-label="Start Recording">
+        <button id="record-btn" class="icon-btn record-btn" title="Start Recording">
             <div class="record-icon"></div>
-            <span class="tooltip">start recording</span>
         </button>
-        <button id="list-btn" class="icon-btn list-btn" aria-label="View Recordings">
+        <button id="list-btn" class="icon-btn list-btn" title="View Recordings">
             <div class="list-icon">
                 <span></span>
                 <span></span>
                 <span></span>
             </div>
-            <span class="tooltip">past recordings</span>
         </button>
     </div>
 
@@ -46,7 +55,7 @@
             <div class="audio-widget">
 
                 <!-- Mic Dropdown Trigger -->
-                <button id="mic-toggle-btn" class="mic-trigger" title="Select Input">
+                <button id="mic-toggle-btn" class="mic-trigger" title="Select Microphone">
                     <!-- Mic Icon -->
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -80,16 +89,16 @@
                 <!-- Actions -->
                 <div class="actions-container">
                     <!-- Play/Pause Button -->
-                    <button id="pause-recording-btn" class="action-btn" title="Pause/Resume">
+                    <button id="pause-recording-btn" class="action-btn">
                         <!-- Pause Icon (shown when recording) -->
                         <svg class="pause-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                            title="Pause" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                             <rect x="6" y="4" width="4" height="16" />
                             <rect x="14" y="4" width="4" height="16" />
                         </svg>
                         <!-- Play Icon (shown when paused) -->
                         <svg class="play-icon-svg hidden" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                            title="Resume" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                             <path d="M6 3L20 12L6 21V3Z" />
                         </svg>
                     </button>
@@ -117,7 +126,7 @@
             <div id="mic-selector" class="dropdown-menu hidden interactive">
                 <!-- Header -->
                 <div class="dropdown-header">
-                    <span class="dropdown-title">Select Input</span>
+                    <span class="dropdown-title">Select Microphone</span>
                 </div>
 
                 <!-- Mic List (dynamically populated by widget.js) -->
@@ -127,7 +136,7 @@
 
                 <!-- Footer / Settings -->
                 <div class="dropdown-footer">
-                    <button class="settings-btn">
+                    <button class="settings-btn" disabled>
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20 7h-9" />
