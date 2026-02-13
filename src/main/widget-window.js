@@ -175,8 +175,28 @@ function setCompactMode() {
  */
 function setRecordingMode() {
   if (widgetWindow) {
-    const newWidth = 360;
-    const newHeight = 60;
+    const newWidth = 270;
+    const newHeight = 50;
+
+    const { x, y } = ensureOnScreen(widgetWindow, newWidth, newHeight);
+
+    // Force resizable to update bounds
+    widgetWindow.setResizable(true);
+    widgetWindow.setSize(newWidth, newHeight, true);
+    widgetWindow.setResizable(false);
+
+    // Restore/Update position
+    widgetWindow.setPosition(x, y, true);
+  }
+}
+
+/**
+ * Set widget to recording mode with mic dropdown open
+ */
+function setRecordingMicMode() {
+  if (widgetWindow) {
+    const newWidth = 270;
+    const newHeight = 270;
 
     const { x, y } = ensureOnScreen(widgetWindow, newWidth, newHeight);
 
@@ -195,8 +215,8 @@ function setRecordingMode() {
  */
 function setListMode() {
   if (widgetWindow) {
-    const newWidth = 330;
-    const newHeight = 370;
+    const newWidth = 290;
+    const newHeight = 290;
 
     const { x, y } = ensureOnScreen(widgetWindow, newWidth, newHeight);
 
@@ -215,7 +235,7 @@ function setListMode() {
  */
 function setErrorMode() {
   if (widgetWindow) {
-    const newWidth = 340;
+    const newWidth = 290;
     const newHeight = 120; // Sufficient height for multiline error
 
     const { x, y } = ensureOnScreen(widgetWindow, newWidth, newHeight);
@@ -264,6 +284,7 @@ module.exports = {
   toggleWidget,
   setCompactMode,
   setRecordingMode,
+  setRecordingMicMode,
   setListMode,
   setErrorMode,
   expandWidget,

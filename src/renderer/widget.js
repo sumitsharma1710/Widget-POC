@@ -15,10 +15,14 @@ class Widget {
     this.timerInterval = null;
     this.playbackTimers = new Map(); // Track playback timers for each recording
     this.recordings = [];
+    this.microphones = [];
+    this.selectedMicId = null;
+    this.micDropdownOpen = false;
 
     this.initElements();
     this.attachEventListeners();
     this.loadRecordings();
+    this.listMicrophones();
   }
 
   /**
@@ -39,8 +43,14 @@ class Widget {
     this.recordingPanel = document.getElementById("recording-panel");
     this.pauseRecordingBtn = document.getElementById("pause-recording-btn");
     this.doneRecordingBtn = document.getElementById("done-recording-btn");
-    this.waveformCanvas = document.getElementById("waveform-canvas");
+    this.cancelRecordingBtn = document.getElementById("cancel-recording-btn");
+    this.micToggleBtn = document.getElementById("mic-toggle-btn");
+    this.micSelector = document.getElementById("mic-selector");
+    this.micList = document.getElementById("mic-list");
     this.recordingTime = document.getElementById("recording-time");
+    this.chevronIcon = document.getElementById("chevron-icon");
+    this.pauseIconSvg = this.pauseRecordingBtn.querySelector(".pause-icon-svg");
+    this.playIconSvg = this.pauseRecordingBtn.querySelector(".play-icon-svg");
 
     // Recordings panel
     this.recordingsPanel = document.getElementById("recordings-panel");
@@ -67,6 +77,28 @@ class Widget {
 
     // Done recording button
     this.doneRecordingBtn.addEventListener("click", () => this.handleDone());
+
+    // Cancel recording button
+    this.cancelRecordingBtn.addEventListener("click", () =>
+      this.handleCancel(),
+    );
+
+    // Mic toggle button
+    this.micToggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.toggleMicDropdown();
+    });
+
+    // Close mic dropdown when clicking outside
+    document.addEventListener("click", (e) => {
+      if (
+        this.micDropdownOpen &&
+        !this.micSelector.contains(e.target) &&
+        !this.micToggleBtn.contains(e.target)
+      ) {
+        this.toggleMicDropdown(false);
+      }
+    });
 
     // Close list button
     this.closeListBtn.addEventListener("click", () =>
@@ -130,8 +162,13 @@ class Widget {
    */
   async handleRecordClick() {
     try {
-      // Initialize recorder with canvas
-      await this.audioRecorder.init(this.waveformCanvas);
+      // Refresh mic list if empty
+      if (this.microphones.length === 0) {
+        await this.listMicrophones();
+      }
+
+      // Initialize recorder
+      await this.audioRecorder.init(null, this.selectedMicId);
 
       // Start recording
       await this.audioRecorder.start();
@@ -160,15 +197,108 @@ class Widget {
   }
 
   /**
+   * List available microphones
+   */
+  async listMicrophones() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      this.microphones = devices.filter(
+        (device) => device.kind === "audioinput",
+      );
+
+      // Select default if none selected
+      if (!this.selectedMicId && this.microphones.length > 0) {
+        // Try to find the default device or just pick the first one
+        const defaultMic =
+          this.microphones.find((m) => m.deviceId === "default") ||
+          this.microphones[0];
+        this.selectedMicId = defaultMic.deviceId;
+      }
+
+      this.populateMicList();
+    } catch (error) {
+      console.error("Error listing microphones:", error);
+    }
+  }
+
+  /**
+   * Populate the mic selector dropdown
+   */
+  populateMicList() {
+    this.micList.innerHTML = "";
+
+    this.microphones.forEach((mic) => {
+      const option = document.createElement("button");
+      option.className = `mic-option ${mic.deviceId === this.selectedMicId ? "selected" : ""}`;
+      option.innerHTML = `
+        <span class="mic-name-text">${mic.label || "Microphone " + (this.microphones.indexOf(mic) + 1)}</span>
+        ${
+          mic.deviceId === this.selectedMicId
+            ? `
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        `
+            : ""
+        }
+      `;
+
+      option.onclick = () => this.selectMicrophone(mic.deviceId);
+      this.micList.appendChild(option);
+    });
+  }
+
+  /**
+   * Toggle the mic selection dropdown
+   */
+  toggleMicDropdown(forceState) {
+    this.micDropdownOpen =
+      forceState !== undefined ? forceState : !this.micDropdownOpen;
+
+    if (this.micDropdownOpen) {
+      this.micSelector.classList.remove("hidden");
+      this.chevronIcon.classList.add("rotate-180");
+      this.populateMicList(); // Refresh list on open
+
+      // Resize window for dropdown
+      window.electronAPI.resizeWindow("recording-mic");
+    } else {
+      this.micSelector.classList.add("hidden");
+      this.chevronIcon.classList.remove("rotate-180");
+
+      // Return to normal recording size
+      if (this.isRecording) {
+        window.electronAPI.resizeWindow("recording");
+      }
+    }
+  }
+
+  /**
+   * Select a microphone
+   */
+  async selectMicrophone(deviceId) {
+    this.selectedMicId = deviceId;
+    this.toggleMicDropdown(false);
+
+    // If we are currently recording, we might want to restart the stream
+    // but the user just asked for "mic select kr saku" so I'll keep it simple for now.
+    // Switching during recording usually requires stopping the old stream and starting a new one.
+    if (this.isRecording) {
+      console.log(
+        "Switching mic during recording not yet implemented (restarts needed)",
+      );
+      // For now, let's just update the internal selected mic for the next recording
+    }
+
+    console.log("Microphone selected:", deviceId);
+  }
+
+  /**
    * Reset pause button to initial pause icon state
    */
   resetPauseButton() {
-    const pauseIcon = this.pauseRecordingBtn.querySelector(".pause-icon");
-    pauseIcon.style.cssText = "";
-    pauseIcon.innerHTML = `
-      <span></span>
-      <span></span>
-    `;
+    if (this.pauseIconSvg) this.pauseIconSvg.classList.remove("hidden");
+    if (this.playIconSvg) this.playIconSvg.classList.add("hidden");
   }
 
   /**
@@ -188,8 +318,6 @@ class Widget {
       }
 
       this.startTimer(); // Resume timer
-
-      // Reset to pause icon
       this.resetPauseButton();
     } else {
       // Pause
@@ -198,17 +326,39 @@ class Widget {
       this.lastPauseTime = Date.now();
       this.stopTimer(); // Stop timer when paused
 
-      // Change to play icon when paused
-      const pauseIcon = this.pauseRecordingBtn.querySelector(".pause-icon");
-      pauseIcon.style.cssText = `
-        width: 0;
-        height: 0;
-        border-left: 10px solid #ffc107;
-        border-top: 6px solid transparent;
-        border-bottom: 6px solid transparent;
-        margin-left: 3px;
-      `;
-      pauseIcon.innerHTML = "";
+      // Toggle icons
+      if (this.pauseIconSvg) this.pauseIconSvg.classList.add("hidden");
+      if (this.playIconSvg) this.playIconSvg.classList.remove("hidden");
+    }
+  }
+
+  /**
+   * Handle cancel button
+   */
+  async handleCancel() {
+    try {
+      // Stop/Cancel audio recorder
+      this.audioRecorder.cancel();
+
+      // Notify backend to discard
+      const result = await window.electronAPI.cancelRecording();
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      console.log("Recording cancelled and discarded");
+
+      // Reset UI
+      this.stopTimer();
+      this.hideRecordingPanel();
+      this.isRecording = false;
+      this.isPaused = false;
+      this.recordingStartTime = null;
+      this.pausedDuration = 0;
+      this.lastPauseTime = null;
+    } catch (error) {
+      console.error("Failed to cancel recording:", error);
+      this.showError(`Failed to cancel: ${error.message}`);
     }
   }
 
@@ -259,10 +409,6 @@ class Widget {
     // Show panel immediately - CSS transition (0.3s) handles the fade in
     this.compactControls.classList.add("hidden");
     this.recordingPanel.classList.remove("hidden");
-
-    // Set canvas size
-    this.waveformCanvas.width = 180;
-    this.waveformCanvas.height = 32;
   }
 
   /**
@@ -403,13 +549,13 @@ class Widget {
     item.innerHTML = `
       <div class="recording-header">
         <div class="recording-name">${recording.fileName}</div>
-        <div class="recording-date">${formattedDate}</div>
       </div>
       <div class="recording-controls">
-        <button class="play-btn" data-path="${recording.filePath}" data-id="${recording.id}">
-          <div class="play-icon"></div>
-        </button>
-        <div class="recording-duration" data-id="${recording.id}">0:00 / ${totalFormatted}</div>
+          <button class="play-btn" data-path="${recording.filePath}" data-id="${recording.id}">
+            <div class="play-icon"></div>
+          </button>
+          <div class="recording-duration" data-id="${recording.id}">0:00 / ${totalFormatted}</div>
+        <div class="recording-date">${formattedDate}</div>
       </div>
     `;
 

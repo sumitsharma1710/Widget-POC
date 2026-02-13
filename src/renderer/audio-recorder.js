@@ -21,15 +21,20 @@ class AudioRecorder {
     // Chunk saving interval
     this.saveInterval = null;
     this.SAVE_INTERVAL_MS = 5000; // Save every 5 seconds
+
+    this.selectedDeviceId = null;
   }
 
   /**
    * Initialize the audio recorder
    * @param {HTMLCanvasElement} canvas - Canvas element for waveform
    */
-  async init(canvas) {
+  async init(canvas, deviceId = null) {
     this.canvas = canvas;
-    this.canvasCtx = canvas.getContext("2d");
+    if (this.canvas) {
+      this.canvasCtx = canvas.getContext("2d");
+    }
+    this.selectedDeviceId = deviceId;
 
     // Request microphone access
     try {
@@ -48,14 +53,23 @@ class AudioRecorder {
       }
 
       // Try with advanced constraints first
-      console.log("Requesting microphone access with advanced constraints...");
-      this.stream = await navigator.mediaDevices.getUserMedia({
+      console.log(
+        "Requesting microphone access with advanced constraints...",
+        this.selectedDeviceId,
+      );
+      const constraints = {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
         },
-      });
+      };
+
+      if (this.selectedDeviceId) {
+        constraints.audio.deviceId = { exact: this.selectedDeviceId };
+      }
+
+      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log("Microphone access granted");
       return true;
     } catch (error) {
@@ -66,9 +80,14 @@ class AudioRecorder {
 
       try {
         // Fallback to basic constraints
-        this.stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
+        const basicConstraints = { audio: true };
+        if (this.selectedDeviceId) {
+          basicConstraints.audio = {
+            deviceId: { exact: this.selectedDeviceId },
+          };
+        }
+        this.stream =
+          await navigator.mediaDevices.getUserMedia(basicConstraints);
         console.log("Microphone access granted with basic constraints");
         return true;
       } catch (fallbackError) {

@@ -5,6 +5,7 @@ const {
   collapseWidget,
   setCompactMode,
   setRecordingMode,
+  setRecordingMicMode,
   setListMode,
   setErrorMode,
 } = require("./widget-window");
@@ -156,6 +157,9 @@ function setupIpcHandlers() {
         break;
       case "recording":
         setRecordingMode();
+        break;
+      case "recording-mic":
+        setRecordingMicMode();
         break;
       case "list":
         setListMode();
