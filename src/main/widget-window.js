@@ -176,7 +176,7 @@ function setCompactMode() {
 function setRecordingMode() {
   if (widgetWindow) {
     const newWidth = 270;
-    const newHeight = 50;
+    const newHeight = 60;
 
     const { x, y } = ensureOnScreen(widgetWindow, newWidth, newHeight);
 

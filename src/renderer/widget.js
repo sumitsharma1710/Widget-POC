@@ -13,16 +13,22 @@ class Widget {
     this.pausedDuration = 0;
     this.lastPauseTime = null;
     this.timerInterval = null;
-    this.playbackTimers = new Map(); // Track playback timers for each recording
+    this.playbackTimers = new Map();
     this.recordings = [];
     this.microphones = [];
     this.selectedMicId = null;
     this.micDropdownOpen = false;
 
+    // Device monitoring
+    this.deviceChangeInterval = null;
+    this.currentRecordingMicId = null;
+    this.micMonitorInterval = null;
+
     this.initElements();
     this.attachEventListeners();
     this.loadRecordings();
     this.listMicrophones();
+    this.setupDeviceChangeMonitoring();
   }
 
   /**
@@ -122,10 +128,196 @@ class Widget {
         console.log("Recovered recording:", recording);
         this.loadRecordings();
         this.showError("Recovered interrupted recording");
-        // Auto-hide after 3 seconds
         setTimeout(() => this.hideError(), 3000);
       });
     }
+  }
+
+  /**
+   * Setup device change monitoring
+   * Monitors for microphone connections/disconnections
+   */
+  setupDeviceChangeMonitoring() {
+    // Listen for device changes
+    navigator.mediaDevices.addEventListener("devicechange", async () => {
+      console.log("Device change detected");
+      await this.handleDeviceChange();
+    });
+  }
+
+  /**
+   * Handle device change events
+   */
+  async handleDeviceChange() {
+    const previousMics = [...this.microphones];
+    await this.listMicrophones();
+
+    // If dropdown is open, update it in real-time
+    if (this.micDropdownOpen) {
+      this.populateMicList();
+    }
+
+    // If recording, check if current mic is still available
+    if (this.isRecording && this.currentRecordingMicId) {
+      await this.checkCurrentMicStatus(previousMics);
+    }
+  }
+
+  /**
+   * Check if current recording mic is still available
+   */
+  async checkCurrentMicStatus(previousMics) {
+    const currentMicStillExists = this.microphones.some(
+      (mic) => mic.deviceId === this.currentRecordingMicId,
+    );
+
+    if (!currentMicStillExists) {
+      console.log("Current microphone disconnected during recording");
+      await this.handleMicDisconnectDuringRecording();
+    }
+  }
+
+  /**
+   * Handle microphone disconnection during recording
+   */
+  async handleMicDisconnectDuringRecording() {
+    // Try to find and switch to an available working microphone
+    const workingMic = await this.findWorkingMicrophone();
+
+    if (workingMic) {
+      // Switch to the working microphone
+      try {
+        await this.switchMicrophoneDuringRecording(workingMic.deviceId);
+        this.showError(
+          `Mic disconnected. Switched to ${workingMic.label || "default mic"}`,
+        );
+        setTimeout(() => this.hideError(), 3000);
+      } catch (error) {
+        console.error("Failed to switch microphone:", error);
+        await this.pauseRecordingDueToMicIssue("Failed to switch microphone");
+      }
+    } else {
+      // No working microphone available - pause recording
+      await this.pauseRecordingDueToMicIssue(
+        "No microphone available. Please connect a mic to continue",
+      );
+    }
+  }
+
+  /**
+   * Find a working microphone from available devices
+   */
+  async findWorkingMicrophone() {
+    // Refresh microphone list
+    await this.listMicrophones();
+
+    if (this.microphones.length === 0) {
+      return null;
+    }
+
+    // Try to find default mic first
+    const defaultMic = this.microphones.find((m) => m.deviceId === "default");
+    if (defaultMic) {
+      const isWorking = await this.testMicrophone(defaultMic.deviceId);
+      if (isWorking) {
+        return defaultMic;
+      }
+    }
+
+    // Test each microphone to find a working one
+    for (const mic of this.microphones) {
+      if (mic.deviceId === "default") continue; // Already tested
+
+      const isWorking = await this.testMicrophone(mic.deviceId);
+      if (isWorking) {
+        return mic;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Test if a microphone is working
+   */
+  async testMicrophone(deviceId) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: { exact: deviceId },
+          sampleRate: 8000,
+          channelCount: 1,
+        },
+      });
+
+      // Check if we're actually getting audio
+      const audioTracks = stream.getAudioTracks();
+      const hasAudio =
+        audioTracks.length > 0 && audioTracks[0].readyState === "live";
+
+      // Stop the test stream
+      stream.getTracks().forEach((track) => track.stop());
+
+      return hasAudio;
+    } catch (error) {
+      console.error(`Microphone test failed for device ${deviceId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Switch microphone during active recording
+   */
+  async switchMicrophoneDuringRecording(newDeviceId) {
+    console.log("Switching to microphone:", newDeviceId);
+
+    // Update the recorder with new mic
+    await this.audioRecorder.switchMicrophone(newDeviceId);
+
+    // Update current recording mic ID
+    this.currentRecordingMicId = newDeviceId;
+    this.selectedMicId = newDeviceId;
+
+    // Update UI if dropdown is open
+    if (this.micDropdownOpen) {
+      this.populateMicList();
+    }
+  }
+
+  /**
+   * Pause recording due to microphone issues
+   */
+  async pauseRecordingDueToMicIssue(message) {
+    // Pause the recording if not already paused
+    if (!this.isPaused) {
+      this.audioRecorder.pause();
+      this.isPaused = true;
+      this.lastPauseTime = Date.now();
+      this.stopTimer();
+
+      // Toggle icons
+      if (this.pauseIconSvg) this.pauseIconSvg.classList.add("hidden");
+      if (this.playIconSvg) this.playIconSvg.classList.remove("hidden");
+    }
+
+    // Disable buttons except cancel
+    this.pauseRecordingBtn.disabled = true;
+    this.doneRecordingBtn.disabled = true;
+    this.pauseRecordingBtn.style.opacity = "0.5";
+    this.doneRecordingBtn.style.opacity = "0.5";
+
+    // Show error message
+    this.showError(message);
+  }
+
+  /**
+   * Enable recording controls when mic becomes available
+   */
+  enableRecordingControls() {
+    this.pauseRecordingBtn.disabled = false;
+    this.doneRecordingBtn.disabled = false;
+    this.pauseRecordingBtn.style.opacity = "1";
+    this.doneRecordingBtn.style.opacity = "1";
   }
 
   /**
@@ -135,7 +327,6 @@ class Widget {
     this.errorMessage.textContent = message;
     this.errorDisplay.classList.remove("hidden");
 
-    // Resize window if needed (unless list is open via list mode)
     if (this.recordingsPanel.classList.contains("hidden")) {
       window.electronAPI.resizeWindow("error");
     }
@@ -147,7 +338,6 @@ class Widget {
   hideError() {
     this.errorDisplay.classList.add("hidden");
 
-    // Restore window size based on current state
     if (!this.recordingsPanel.classList.contains("hidden")) {
       // List is open, size is fine
     } else if (this.isRecording) {
@@ -162,9 +352,34 @@ class Widget {
    */
   async handleRecordClick() {
     try {
-      // Refresh mic list if empty
+      // Refresh mic list
+      await this.listMicrophones();
+
+      // Check if any microphones are available
       if (this.microphones.length === 0) {
-        await this.listMicrophones();
+        this.showError(
+          "No microphone detected. Please connect a mic and try again.",
+        );
+        return;
+      }
+
+      // Test if selected microphone is working
+      const micToUse = this.selectedMicId || this.microphones[0].deviceId;
+      const isWorking = await this.testMicrophone(micToUse);
+
+      if (!isWorking) {
+        // Try to find any working microphone
+        const workingMic = await this.findWorkingMicrophone();
+
+        if (!workingMic) {
+          this.showError(
+            "No working microphone found. Please check your audio settings.",
+          );
+          return;
+        }
+
+        // Use the working mic
+        this.selectedMicId = workingMic.deviceId;
       }
 
       // Initialize recorder
@@ -185,14 +400,50 @@ class Widget {
       this.recordingStartTime = Date.now();
       this.pausedDuration = 0;
       this.lastPauseTime = null;
+      this.currentRecordingMicId = this.selectedMicId;
+
       this.showRecordingPanel();
       this.startTimer();
-
-      // Reset pause button icon to show pause bars
       this.resetPauseButton();
+      this.enableRecordingControls();
+
+      // Start monitoring for mic changes during recording
+      this.startMicMonitoring();
     } catch (error) {
       console.error("Failed to start recording:", error);
       this.showError(error.message);
+    }
+  }
+
+  /**
+   * Start monitoring microphone during recording
+   */
+  startMicMonitoring() {
+    // Check mic status every 2 seconds during recording
+    this.micMonitorInterval = setInterval(async () => {
+      if (!this.isRecording) {
+        this.stopMicMonitoring();
+        return;
+      }
+
+      // Check if current mic is still available and working
+      const micExists = this.microphones.some(
+        (mic) => mic.deviceId === this.currentRecordingMicId,
+      );
+
+      if (!micExists) {
+        await this.handleMicDisconnectDuringRecording();
+      }
+    }, 2000);
+  }
+
+  /**
+   * Stop monitoring microphone
+   */
+  stopMicMonitoring() {
+    if (this.micMonitorInterval) {
+      clearInterval(this.micMonitorInterval);
+      this.micMonitorInterval = null;
     }
   }
 
@@ -208,7 +459,6 @@ class Widget {
 
       // Select default if none selected
       if (!this.selectedMicId && this.microphones.length > 0) {
-        // Try to find the default device or just pick the first one
         const defaultMic =
           this.microphones.find((m) => m.deviceId === "default") ||
           this.microphones[0];
@@ -226,6 +476,12 @@ class Widget {
    */
   populateMicList() {
     this.micList.innerHTML = "";
+
+    if (this.microphones.length === 0) {
+      this.micList.innerHTML =
+        '<div style="padding: 12px; text-align: center; color: #888;">No microphones available</div>';
+      return;
+    }
 
     this.microphones.forEach((mic) => {
       const option = document.createElement("button");
@@ -258,13 +514,21 @@ class Widget {
     if (this.micDropdownOpen) {
       this.micSelector.classList.remove("hidden");
       this.chevronIcon.classList.add("rotate-180");
-      this.populateMicList(); // Refresh list on open
+
+      // Refresh list when opening
+      this.listMicrophones();
 
       // Resize window for dropdown
       window.electronAPI.resizeWindow("recording-mic");
+
+      // Start real-time device monitoring while dropdown is open
+      this.startDropdownDeviceMonitoring();
     } else {
       this.micSelector.classList.add("hidden");
       this.chevronIcon.classList.remove("rotate-180");
+
+      // Stop device monitoring
+      this.stopDropdownDeviceMonitoring();
 
       // Return to normal recording size
       if (this.isRecording) {
@@ -274,20 +538,45 @@ class Widget {
   }
 
   /**
+   * Start real-time device monitoring for dropdown
+   */
+  startDropdownDeviceMonitoring() {
+    // Already handled by global devicechange listener
+    // but we could add additional polling here if needed
+  }
+
+  /**
+   * Stop dropdown device monitoring
+   */
+  stopDropdownDeviceMonitoring() {
+    // Cleanup if needed
+  }
+
+  /**
    * Select a microphone
    */
   async selectMicrophone(deviceId) {
     this.selectedMicId = deviceId;
     this.toggleMicDropdown(false);
 
-    // If we are currently recording, we might want to restart the stream
-    // but the user just asked for "mic select kr saku" so I'll keep it simple for now.
-    // Switching during recording usually requires stopping the old stream and starting a new one.
-    if (this.isRecording) {
-      console.log(
-        "Switching mic during recording not yet implemented (restarts needed)",
-      );
-      // For now, let's just update the internal selected mic for the next recording
+    // If recording, try to switch microphone
+    if (this.isRecording && deviceId !== this.currentRecordingMicId) {
+      try {
+        // Test if the new mic works
+        const isWorking = await this.testMicrophone(deviceId);
+
+        if (!isWorking) {
+          this.showError("Selected microphone is not working");
+          setTimeout(() => this.hideError(), 3000);
+          return;
+        }
+
+        await this.switchMicrophoneDuringRecording(deviceId);
+      } catch (error) {
+        console.error("Failed to switch microphone:", error);
+        this.showError("Failed to switch microphone");
+        setTimeout(() => this.hideError(), 3000);
+      }
     }
 
     console.log("Microphone selected:", deviceId);
@@ -304,8 +593,32 @@ class Widget {
   /**
    * Handle pause button
    */
-  handlePause() {
+  async handlePause() {
     if (this.isPaused) {
+      // Check if mic is available before resuming
+      if (this.pauseRecordingBtn.disabled) {
+        // Mic is not available, try to find one
+        const workingMic = await this.findWorkingMicrophone();
+
+        if (workingMic) {
+          try {
+            await this.switchMicrophoneDuringRecording(workingMic.deviceId);
+            this.enableRecordingControls();
+            this.hideError();
+          } catch (error) {
+            this.showError(
+              "No microphone available. Please connect a mic to continue",
+            );
+            return;
+          }
+        } else {
+          this.showError(
+            "No microphone available. Please connect a mic to continue",
+          );
+          return;
+        }
+      }
+
       // Resume
       this.audioRecorder.resume();
       this.isPaused = false;
@@ -317,14 +630,14 @@ class Widget {
         this.lastPauseTime = null;
       }
 
-      this.startTimer(); // Resume timer
+      this.startTimer();
       this.resetPauseButton();
     } else {
       // Pause
       this.audioRecorder.pause();
       this.isPaused = true;
       this.lastPauseTime = Date.now();
-      this.stopTimer(); // Stop timer when paused
+      this.stopTimer();
 
       // Toggle icons
       if (this.pauseIconSvg) this.pauseIconSvg.classList.add("hidden");
@@ -337,6 +650,9 @@ class Widget {
    */
   async handleCancel() {
     try {
+      // Stop mic monitoring
+      this.stopMicMonitoring();
+
       // Stop/Cancel audio recorder
       this.audioRecorder.cancel();
 
@@ -356,6 +672,8 @@ class Widget {
       this.recordingStartTime = null;
       this.pausedDuration = 0;
       this.lastPauseTime = null;
+      this.currentRecordingMicId = null;
+      this.enableRecordingControls();
     } catch (error) {
       console.error("Failed to cancel recording:", error);
       this.showError(`Failed to cancel: ${error.message}`);
@@ -367,6 +685,9 @@ class Widget {
    */
   async handleDone() {
     try {
+      // Stop mic monitoring
+      this.stopMicMonitoring();
+
       const duration = Math.floor(
         (Date.now() - this.recordingStartTime - this.pausedDuration) / 1000,
       );
@@ -390,6 +711,8 @@ class Widget {
       this.recordingStartTime = null;
       this.pausedDuration = 0;
       this.lastPauseTime = null;
+      this.currentRecordingMicId = null;
+      this.enableRecordingControls();
 
       // Reload recordings list
       await this.loadRecordings();
@@ -403,10 +726,7 @@ class Widget {
    * Show recording panel with waveform
    */
   showRecordingPanel() {
-    // Resize window FIRST
     window.electronAPI.resizeWindow("recording");
-
-    // Show panel immediately - CSS transition (0.3s) handles the fade in
     this.compactControls.classList.add("hidden");
     this.recordingPanel.classList.remove("hidden");
   }
@@ -415,15 +735,12 @@ class Widget {
    * Hide recording panel
    */
   hideRecordingPanel() {
-    // Hide panels FIRST (Trigger CSS fade out)
     this.recordingPanel.classList.add("hidden");
     this.compactControls.classList.remove("hidden");
 
-    // Wait for transition to almost complete (250ms) before resizing
-    // CSS transition is 300ms, so this resize happens just as it fades out
     setTimeout(() => {
       window.electronAPI.resizeWindow("compact");
-    }, 300);
+    }, 250);
   }
 
   /**
@@ -455,11 +772,7 @@ class Widget {
    */
   async showRecordingsList() {
     await this.loadRecordings();
-
-    // Resize window FIRST
     window.electronAPI.resizeWindow("list");
-
-    // Show immediately
     this.compactControls.classList.add("hidden");
     this.recordingsPanel.classList.remove("hidden");
   }
@@ -468,20 +781,17 @@ class Widget {
    * Hide recordings list panel
    */
   hideRecordingsList() {
-    // Hide panels FIRST
     this.recordingsPanel.classList.add("hidden");
     this.compactControls.classList.remove("hidden");
 
-    // Stop any playing audio
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.clearPlaybackTimers();
     }
 
-    // Wait for transition to almost complete (250ms) before resizing
     setTimeout(() => {
       window.electronAPI.resizeWindow("compact");
-    }, 300);
+    }, 250);
   }
 
   /**
@@ -512,7 +822,6 @@ class Widget {
       return;
     }
 
-    // Show only 3 most recent recordings
     const recentRecordings = this.recordings.slice(-3).reverse();
 
     recentRecordings.forEach((recording) => {
@@ -520,7 +829,6 @@ class Widget {
       this.recordingsList.appendChild(item);
     });
 
-    // Show "See More" button if there are more than 3 recordings
     this.seeMoreBtn.style.display =
       this.recordings.length > 3 ? "block" : "none";
   }
@@ -532,7 +840,6 @@ class Widget {
     const item = document.createElement("div");
     item.className = "recording-item";
 
-    // Format date
     const date = new Date(recording.createdAt);
     const formattedDate = date.toLocaleDateString("en-US", {
       month: "short",
@@ -541,7 +848,6 @@ class Widget {
       minute: "2-digit",
     });
 
-    // Format duration
     const totalMinutes = Math.floor(recording.duration / 60);
     const totalSeconds = recording.duration % 60;
     const totalFormatted = `${totalMinutes}:${String(totalSeconds).padStart(2, "0")}`;
@@ -559,7 +865,6 @@ class Widget {
       </div>
     `;
 
-    // Attach play button listener
     const playBtn = item.querySelector(".play-btn");
     const durationEl = item.querySelector(".recording-duration");
     playBtn.addEventListener("click", (e) => {
@@ -594,7 +899,6 @@ class Widget {
     const filePath = recording.filePath;
     const recordingId = recording.id;
 
-    // If playing this file, pause it
     if (
       this.currentAudio &&
       !this.currentAudio.paused &&
@@ -603,7 +907,6 @@ class Widget {
       this.currentAudio.pause();
       button.innerHTML = '<div class="play-icon"></div>';
 
-      // Clear the timer for this recording
       if (this.playbackTimers.has(recordingId)) {
         clearInterval(this.playbackTimers.get(recordingId));
         this.playbackTimers.delete(recordingId);
@@ -611,12 +914,10 @@ class Widget {
       return;
     }
 
-    // Stop any currently playing audio
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.clearPlaybackTimers();
 
-      // Reset all play buttons and durations
       document.querySelectorAll(".play-btn").forEach((btn) => {
         btn.innerHTML = '<div class="play-icon"></div>';
       });
@@ -631,14 +932,10 @@ class Widget {
       });
     }
 
-    // Create and play new audio
     this.currentAudio = new Audio(`file://${filePath}`);
-
-    // Update button to pause icon
     button.innerHTML =
       '<div class="pause-icon"><span></span><span></span></div>';
 
-    // Update playback progress
     const updateProgress = () => {
       if (this.currentAudio && !this.currentAudio.paused) {
         const current = this.formatTime(this.currentAudio.currentTime);
@@ -647,11 +944,9 @@ class Widget {
       }
     };
 
-    // Set up interval to update progress
     const timer = setInterval(updateProgress, 100);
     this.playbackTimers.set(recordingId, timer);
 
-    // Reset button when audio ends
     this.currentAudio.onended = () => {
       button.innerHTML = '<div class="play-icon"></div>';
       const total = this.formatTime(recording.duration);
@@ -663,7 +958,6 @@ class Widget {
       }
     };
 
-    // Handle errors
     this.currentAudio.onerror = (error) => {
       console.error("Audio playback error:", error);
       this.showError("Failed to play recording");
@@ -704,6 +998,8 @@ class Widget {
     }
 
     this.clearPlaybackTimers();
+    this.stopMicMonitoring();
+    this.stopDropdownDeviceMonitoring();
 
     if (this.audioRecorder) {
       this.audioRecorder.cleanup();

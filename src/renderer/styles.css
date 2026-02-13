@@ -71,9 +71,9 @@ button {
   right: 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: rgba(220, 38, 38, 0.98);
+  gap: 4px;
+  padding: 3px 4px;
+  background: rgba(183, 49, 49, 0.98);
   backdrop-filter: blur(10px);
   border-radius: 12px;
   color: #fff;
@@ -98,8 +98,7 @@ button {
 
 .error-message {
   flex: 1;
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 11px;
 }
 
 .error-close-btn {

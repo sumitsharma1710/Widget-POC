@@ -23,11 +23,13 @@ class AudioRecorder {
     this.SAVE_INTERVAL_MS = 5000; // Save every 5 seconds
 
     this.selectedDeviceId = null;
+    this.currentMimeType = null;
   }
 
   /**
    * Initialize the audio recorder
    * @param {HTMLCanvasElement} canvas - Canvas element for waveform
+   * @param {string} deviceId - Microphone device ID
    */
   async init(canvas, deviceId = null) {
     this.canvas = canvas;
@@ -117,12 +119,91 @@ class AudioRecorder {
   }
 
   /**
+   * Switch to a different microphone during active recording
+   * @param {string} newDeviceId - New microphone device ID
+   */
+  async switchMicrophone(newDeviceId) {
+    if (!this.isRecording) {
+      console.log("Not currently recording, nothing to switch");
+      return;
+    }
+
+    console.log("Switching microphone to:", newDeviceId);
+
+    const wasRecording =
+      this.mediaRecorder && this.mediaRecorder.state === "recording";
+    const wasPaused = this.isPaused;
+
+    try {
+      // Save current chunks before switching
+      if (this.chunks.length > 0) {
+        await this.saveCurrentChunks();
+      }
+
+      // Stop current stream
+      if (this.stream) {
+        this.stream.getTracks().forEach((track) => track.stop());
+      }
+
+      // Get new stream with new microphone
+      const constraints = {
+        audio: {
+          deviceId: { exact: newDeviceId },
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      };
+
+      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      this.selectedDeviceId = newDeviceId;
+
+      // Reconnect audio context and analyser
+      if (this.audioContext) {
+        const source = this.audioContext.createMediaStreamSource(this.stream);
+        if (this.analyser) {
+          source.connect(this.analyser);
+        }
+      }
+
+      // Recreate MediaRecorder with new stream
+      if (this.mediaRecorder) {
+        this.mediaRecorder = new MediaRecorder(this.stream, {
+          mimeType: this.currentMimeType,
+          audioBitsPerSecond: 128000,
+        });
+
+        // Reattach event handlers
+        this.mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            this.chunks.push(event.data);
+          }
+        };
+
+        // Restart recording
+        if (wasRecording && !wasPaused) {
+          this.mediaRecorder.start(1000);
+          console.log("Recording restarted with new microphone");
+        } else if (wasPaused) {
+          this.mediaRecorder.start(1000);
+          this.mediaRecorder.pause();
+          console.log("Recording switched (paused state maintained)");
+        }
+      }
+
+      console.log("Microphone switched successfully");
+    } catch (error) {
+      console.error("Failed to switch microphone:", error);
+      throw new Error(`Failed to switch microphone: ${error.message}`);
+    }
+  }
+
+  /**
    * Start recording
    */
   async start() {
     if (!this.stream) {
-      // Should verify init was called
-      await this.init(this.canvas);
+      await this.init(this.canvas, this.selectedDeviceId);
     }
 
     this.audioContext = new (
@@ -137,6 +218,7 @@ class AudioRecorder {
 
     // Determine best supported MIME type
     const mimeType = this.getSupportedMimeType();
+    this.currentMimeType = mimeType;
     console.log("Using MIME type:", mimeType);
 
     try {
@@ -212,14 +294,16 @@ class AudioRecorder {
     if (this.chunks.length === 0) return;
 
     // Combine current chunks
-    const blob = new Blob(this.chunks, { type: this.mediaRecorder.mimeType });
+    const blob = new Blob(this.chunks, {
+      type: this.currentMimeType || this.mediaRecorder.mimeType,
+    });
     const arrayBuffer = await blob.arrayBuffer();
 
     // Send to main process
     try {
       await window.electronAPI.saveChunk(
         arrayBuffer,
-        this.mediaRecorder.mimeType,
+        this.currentMimeType || this.mediaRecorder.mimeType,
       );
       console.log("Chunk saved:", blob.size, "bytes");
 
