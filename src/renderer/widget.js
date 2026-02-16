@@ -24,6 +24,9 @@ class Widget {
     this.currentRecordingMicId = null;
     this.micMonitorInterval = null;
 
+    // Track if mic is unavailable (for resume attempts)
+    this.micUnavailable = false;
+
     this.initElements();
     this.attachEventListeners();
     this.loadRecordings();
@@ -149,6 +152,8 @@ class Widget {
    * Handle device change events
    */
   async handleDeviceChange() {
+    console.log("Device change event triggered");
+
     const previousMics = [...this.microphones];
     await this.listMicrophones();
 
@@ -158,22 +163,19 @@ class Widget {
     }
 
     // If recording, check if current mic is still available
-    if (this.isRecording && this.currentRecordingMicId) {
-      await this.checkCurrentMicStatus(previousMics);
-    }
-  }
+    if (
+      this.isRecording &&
+      this.currentRecordingMicId &&
+      !this.micUnavailable
+    ) {
+      const currentMicStillExists = this.microphones.some(
+        (mic) => mic.deviceId === this.currentRecordingMicId,
+      );
 
-  /**
-   * Check if current recording mic is still available
-   */
-  async checkCurrentMicStatus(previousMics) {
-    const currentMicStillExists = this.microphones.some(
-      (mic) => mic.deviceId === this.currentRecordingMicId,
-    );
-
-    if (!currentMicStillExists) {
-      console.log("Current microphone disconnected during recording");
-      await this.handleMicDisconnectDuringRecording();
+      if (!currentMicStillExists) {
+        console.log("Device change detected mic disconnect");
+        await this.handleMicDisconnectDuringRecording();
+      }
     }
   }
 
@@ -181,10 +183,15 @@ class Widget {
    * Handle microphone disconnection during recording
    */
   async handleMicDisconnectDuringRecording() {
+    console.log("=== Handling microphone disconnect ===");
+    console.log("Current recording mic:", this.currentRecordingMicId);
+    console.log("Available mics:", this.microphones.length);
+
     // Try to find and switch to an available working microphone
     const workingMic = await this.findWorkingMicrophone();
 
     if (workingMic) {
+      console.log("Found working mic to switch to:", workingMic.label);
       // Switch to the working microphone
       try {
         await this.switchMicrophoneDuringRecording(workingMic.deviceId);
@@ -197,6 +204,7 @@ class Widget {
         await this.pauseRecordingDueToMicIssue("Failed to switch microphone");
       }
     } else {
+      console.log("No working microphone available, pausing recording");
       // No working microphone available - pause recording
       await this.pauseRecordingDueToMicIssue(
         "No microphone available. Please connect a mic to continue",
@@ -288,6 +296,14 @@ class Widget {
    * Pause recording due to microphone issues
    */
   async pauseRecordingDueToMicIssue(message) {
+    console.log("Pausing due to mic issue:", message);
+
+    // If already in mic unavailable state, don't repeat the process
+    if (this.micUnavailable) {
+      console.log("Already in mic unavailable state, skipping");
+      return;
+    }
+
     // Pause the recording if not already paused
     if (!this.isPaused) {
       this.audioRecorder.pause();
@@ -295,18 +311,15 @@ class Widget {
       this.lastPauseTime = Date.now();
       this.stopTimer();
 
-      // Toggle icons
+      // Toggle icons to show play state
       if (this.pauseIconSvg) this.pauseIconSvg.classList.add("hidden");
       if (this.playIconSvg) this.playIconSvg.classList.remove("hidden");
     }
 
-    // Disable buttons except cancel
-    this.pauseRecordingBtn.disabled = true;
-    this.doneRecordingBtn.disabled = true;
-    this.pauseRecordingBtn.style.opacity = "0.5";
-    this.doneRecordingBtn.style.opacity = "0.5";
+    // Mark that we're in a "mic unavailable" state
+    this.micUnavailable = true;
 
-    // Show error message
+    // Show error message (only once)
     this.showError(message);
   }
 
@@ -314,6 +327,7 @@ class Widget {
    * Enable recording controls when mic becomes available
    */
   enableRecordingControls() {
+    this.micUnavailable = false;
     this.pauseRecordingBtn.disabled = false;
     this.doneRecordingBtn.disabled = false;
     this.pauseRecordingBtn.style.opacity = "1";
@@ -404,6 +418,7 @@ class Widget {
       this.pausedDuration = 0;
       this.lastPauseTime = null;
       this.currentRecordingMicId = this.selectedMicId;
+      this.micUnavailable = false;
 
       this.showRecordingPanel();
       this.startTimer();
@@ -429,13 +444,29 @@ class Widget {
         return;
       }
 
-      // Check if current mic is still available and working
-      const micExists = this.microphones.some(
-        (mic) => mic.deviceId === this.currentRecordingMicId,
-      );
+      // Refresh the microphones list to get current state
+      await this.listMicrophones();
 
-      if (!micExists) {
-        await this.handleMicDisconnectDuringRecording();
+      if (this.micUnavailable) {
+        // We're in mic unavailable state, check if a mic becomes available
+        const workingMic = await this.findWorkingMicrophone();
+        if (workingMic) {
+          console.log("Mic reconnected and working:", workingMic.label);
+          // Don't auto-resume, just enable controls so user can resume manually
+          // This gives user control over when to continue
+          this.enableRecordingControls();
+          this.hideError();
+        }
+      } else {
+        // We have a mic, check if it's still available
+        const micExists = this.microphones.some(
+          (mic) => mic.deviceId === this.currentRecordingMicId,
+        );
+
+        if (!micExists) {
+          console.log("Mic monitoring detected disconnect");
+          await this.handleMicDisconnectDuringRecording();
+        }
       }
     }, 2000);
   }
@@ -575,6 +606,12 @@ class Widget {
         }
 
         await this.switchMicrophoneDuringRecording(deviceId);
+
+        // If we were in mic unavailable state, enable controls now
+        if (this.micUnavailable) {
+          this.enableRecordingControls();
+          this.hideError();
+        }
       } catch (error) {
         console.error("Failed to switch microphone:", error);
         this.showError("Failed to switch microphone");
@@ -598,23 +635,36 @@ class Widget {
    */
   async handlePause() {
     if (this.isPaused) {
-      // Check if mic is available before resuming
-      if (this.pauseRecordingBtn.disabled) {
-        // Mic is not available, try to find one
+      // Attempting to resume
+      console.log("User attempting to resume recording");
+
+      // Check if we're in a mic unavailable state
+      if (this.micUnavailable) {
+        console.log("In mic unavailable state, checking for mics...");
+
+        // Try to find a working microphone
         const workingMic = await this.findWorkingMicrophone();
 
         if (workingMic) {
+          console.log(
+            "Found working mic, switching and resuming:",
+            workingMic.label,
+          );
           try {
             await this.switchMicrophoneDuringRecording(workingMic.deviceId);
             this.enableRecordingControls();
             this.hideError();
           } catch (error) {
+            console.error("Failed to switch to working mic:", error);
+            // Still no mic available, show error again
             this.showError(
               "No microphone available. Please connect a mic to continue",
             );
             return;
           }
         } else {
+          console.log("No working mic found, cannot resume");
+          // Still no mic available, show error again
           this.showError(
             "No microphone available. Please connect a mic to continue",
           );
@@ -622,7 +672,8 @@ class Widget {
         }
       }
 
-      // Resume
+      // Resume recording
+      console.log("Resuming recording");
       this.audioRecorder.resume();
       this.isPaused = false;
 
@@ -636,7 +687,8 @@ class Widget {
       this.startTimer();
       this.resetPauseButton();
     } else {
-      // Pause
+      // Pause recording (normal user-initiated pause)
+      console.log("User pausing recording");
       this.audioRecorder.pause();
       this.isPaused = true;
       this.lastPauseTime = Date.now();
@@ -676,7 +728,9 @@ class Widget {
       this.pausedDuration = 0;
       this.lastPauseTime = null;
       this.currentRecordingMicId = null;
+      this.micUnavailable = false;
       this.enableRecordingControls();
+      this.hideError();
     } catch (error) {
       console.error("Failed to cancel recording:", error);
       this.showError(`Failed to cancel: ${error.message}`);
@@ -715,7 +769,9 @@ class Widget {
       this.pausedDuration = 0;
       this.lastPauseTime = null;
       this.currentRecordingMicId = null;
+      this.micUnavailable = false;
       this.enableRecordingControls();
+      this.hideError();
 
       // Reload recordings list
       await this.loadRecordings();
@@ -1015,5 +1071,7 @@ class Widget {
 // Initialize widget when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
   const widget = new Widget();
+  // Expose widget globally so audio recorder can notify it
+  window.widget = widget;
   console.log("Widget initialized");
 });

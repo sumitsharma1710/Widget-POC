@@ -24,6 +24,10 @@ class AudioRecorder {
 
     this.selectedDeviceId = null;
     this.currentMimeType = null;
+
+    // Track state monitoring
+    this.trackEndedHandler = null;
+    this.trackMutedHandler = null;
   }
 
   /**
@@ -73,6 +77,10 @@ class AudioRecorder {
 
       this.stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log("Microphone access granted");
+
+      // Setup track monitoring
+      this.setupTrackMonitoring();
+
       return true;
     } catch (error) {
       console.warn(
@@ -91,6 +99,10 @@ class AudioRecorder {
         this.stream =
           await navigator.mediaDevices.getUserMedia(basicConstraints);
         console.log("Microphone access granted with basic constraints");
+
+        // Setup track monitoring
+        this.setupTrackMonitoring();
+
         return true;
       } catch (fallbackError) {
         console.error("Microphone access denied:", fallbackError);
@@ -119,6 +131,61 @@ class AudioRecorder {
   }
 
   /**
+   * Setup monitoring for track state changes
+   */
+  setupTrackMonitoring() {
+    if (!this.stream) return;
+
+    const audioTracks = this.stream.getAudioTracks();
+    if (audioTracks.length === 0) return;
+
+    const track = audioTracks[0];
+
+    // Monitor for track ended (mic disconnected)
+    this.trackEndedHandler = () => {
+      console.log("Audio track ended - microphone disconnected!");
+      if (this.isRecording && window.widget) {
+        // Notify the widget that mic was disconnected
+        window.widget.handleMicDisconnectDuringRecording();
+      }
+    };
+
+    // Monitor for track muted
+    this.trackMutedHandler = () => {
+      console.log("Audio track muted");
+    };
+
+    track.addEventListener("ended", this.trackEndedHandler);
+    track.addEventListener("mute", this.trackMutedHandler);
+
+    console.log("Track monitoring setup complete");
+  }
+
+  /**
+   * Cleanup track monitoring
+   */
+  cleanupTrackMonitoring() {
+    if (!this.stream) return;
+
+    const audioTracks = this.stream.getAudioTracks();
+    if (audioTracks.length === 0) return;
+
+    const track = audioTracks[0];
+
+    if (this.trackEndedHandler) {
+      track.removeEventListener("ended", this.trackEndedHandler);
+      this.trackEndedHandler = null;
+    }
+
+    if (this.trackMutedHandler) {
+      track.removeEventListener("mute", this.trackMutedHandler);
+      this.trackMutedHandler = null;
+    }
+
+    console.log("Track monitoring cleaned up");
+  }
+
+  /**
    * Switch to a different microphone during active recording
    * @param {string} newDeviceId - New microphone device ID
    */
@@ -140,6 +207,9 @@ class AudioRecorder {
         await this.saveCurrentChunks();
       }
 
+      // Cleanup old track monitoring
+      this.cleanupTrackMonitoring();
+
       // Stop current stream
       if (this.stream) {
         this.stream.getTracks().forEach((track) => track.stop());
@@ -157,6 +227,9 @@ class AudioRecorder {
 
       this.stream = await navigator.mediaDevices.getUserMedia(constraints);
       this.selectedDeviceId = newDeviceId;
+
+      // Setup monitoring for new track
+      this.setupTrackMonitoring();
 
       // Reconnect audio context and analyser
       if (this.audioContext) {
@@ -364,6 +437,9 @@ class AudioRecorder {
         this.isRecording = false;
         this.isPaused = false;
 
+        // Cleanup track monitoring
+        this.cleanupTrackMonitoring();
+
         // Cleanup
         if (this.audioContext) {
           this.audioContext.close();
@@ -403,6 +479,9 @@ class AudioRecorder {
     this.chunks = [];
     this.isRecording = false;
     this.isPaused = false;
+
+    // Cleanup track monitoring
+    this.cleanupTrackMonitoring();
 
     // Cleanup
     if (this.audioContext) {
@@ -487,6 +566,7 @@ class AudioRecorder {
       this.saveInterval = null;
     }
 
+    this.cleanupTrackMonitoring();
     cancelAnimationFrame(this.animationId);
   }
 }
