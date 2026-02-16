@@ -327,7 +327,10 @@ class Widget {
     this.errorMessage.textContent = message;
     this.errorDisplay.classList.remove("hidden");
 
-    if (this.recordingsPanel.classList.contains("hidden")) {
+    if (
+      this.recordingsPanel.classList.contains("hidden") &&
+      this.micSelector.classList.contains("hidden")
+    ) {
       window.electronAPI.resizeWindow("error");
     }
   }
