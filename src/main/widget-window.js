@@ -1,4 +1,4 @@
-const { BrowserWindow, screen, ipcMain } = require("electron");
+const { BrowserWindow, screen } = require("electron");
 const path = require("path");
 
 let widgetWindow = null;
@@ -6,7 +6,7 @@ let widgetWindow = null;
 /**
  * Create the widget window
  */
-function createWidgetWindow(preferences, savePreferences) {
+function createWidgetWindow() {
   // Get primary display dimensions
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } =

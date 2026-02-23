@@ -169,8 +169,6 @@ function setupIpcHandlers() {
         break;
     }
   });
-
-  console.log("IPC handlers registered");
 }
 
 module.exports = {

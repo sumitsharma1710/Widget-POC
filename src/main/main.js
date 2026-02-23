@@ -14,7 +14,7 @@ const {
   recoverRecording,
 } = require("./storage");
 const { requestSystemPermissions } = require("./permission");
-const { savePreferences, loadPreferences } = require("./preferences");
+const { loadPreferences } = require("./preferences");
 
 let preferences = null;
 
@@ -70,7 +70,7 @@ if (!gotTheLock) {
     setupIpcHandlers();
 
     // Create the widget window
-    createWidgetWindow(preferences, savePreferences);
+    createWidgetWindow();
 
     // Create system tray
     createTray();

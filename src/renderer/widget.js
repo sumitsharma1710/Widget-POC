@@ -1073,5 +1073,4 @@ document.addEventListener("DOMContentLoaded", () => {
   const widget = new Widget();
   // Expose widget globally so audio recorder can notify it
   window.widget = widget;
-  console.log("Widget initialized");
 });
