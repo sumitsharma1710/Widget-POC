@@ -32,7 +32,6 @@ function setupIpcHandlers() {
       currentRecordingId = await startNewRecording();
       setRecordingState(true);
       expandWidget();
-      console.log("Recording started:", currentRecordingId);
       return { success: true, recordingId: currentRecordingId };
     } catch (error) {
       console.error("Failed to start recording:", error);
@@ -57,13 +56,11 @@ function setupIpcHandlers() {
 
   // Pause recording (handled in renderer, just update tray)
   ipcMain.handle("recording:pause", async (event) => {
-    console.log("Recording paused");
     return { success: true };
   });
 
   // Resume recording (handled in renderer, just update tray)
   ipcMain.handle("recording:resume", async (event) => {
-    console.log("Recording resumed");
     return { success: true };
   });
 
@@ -78,7 +75,6 @@ function setupIpcHandlers() {
       setRecordingState(false);
       collapseWidget();
       currentRecordingId = null;
-      console.log("Recording saved:", result.filePath);
       return { success: true, ...result };
     } catch (error) {
       console.error("Failed to finalize recording:", error);
@@ -97,7 +93,6 @@ function setupIpcHandlers() {
       setRecordingState(false);
       collapseWidget();
       currentRecordingId = null;
-      console.log("Recording cancelled");
       return { success: true };
     } catch (error) {
       console.error("Failed to cancel recording:", error);

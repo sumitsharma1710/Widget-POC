@@ -34,8 +34,6 @@ async function initStorage() {
     // No existing metadata, use defaults
     metadata = { recordings: [], pendingRecovery: null };
   }
-
-  console.log("Storage initialized:", recordingsDir);
 }
 
 /**
@@ -96,8 +94,6 @@ async function saveAudioChunk(recordingId, chunk, mimeType) {
     });
     await saveMetadata();
   }
-
-  console.log(`Saved chunk ${chunkIndex}: ${buffer.length} bytes`);
 }
 
 /**
@@ -152,8 +148,6 @@ async function finalizeRecording(recordingId, duration) {
   // Clean up temp directory
   await fs.promises.rm(recordingTempDir, { recursive: true, force: true });
 
-  console.log(`Recording finalized: ${finalPath} (${stats.size} bytes)`);
-
   return {
     filePath: finalPath,
     fileName: finalFileName,
@@ -179,8 +173,6 @@ async function cancelRecording(recordingId) {
   // Clear pending recovery
   metadata.pendingRecovery = null;
   await saveMetadata();
-
-  console.log("Recording cancelled and cleaned up");
 }
 
 /**
@@ -283,7 +275,6 @@ async function recoverRecording(recoveryData) {
     // Clean up temp directory
     await fs.promises.rm(recordingTempDir, { recursive: true, force: true });
 
-    console.log(`Recovery successful: ${finalPath}`);
     return recordingMetadata;
   } catch (error) {
     console.error("Recovery failed:", error);

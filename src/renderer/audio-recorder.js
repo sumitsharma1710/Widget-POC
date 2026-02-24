@@ -49,7 +49,6 @@ class AudioRecorder {
       const audioInputs = devices.filter(
         (device) => device.kind === "audioinput",
       );
-      console.log("Available audio inputs:", audioInputs);
 
       if (audioInputs.length === 0) {
         console.warn("No audio input devices found!");
@@ -59,10 +58,6 @@ class AudioRecorder {
       }
 
       // Try with advanced constraints first
-      console.log(
-        "Requesting microphone access with advanced constraints...",
-        this.selectedDeviceId,
-      );
       const constraints = {
         audio: {
           echoCancellation: true,
@@ -76,7 +71,6 @@ class AudioRecorder {
       }
 
       this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log("Microphone access granted");
 
       // Setup track monitoring
       this.setupTrackMonitoring();
@@ -98,7 +92,6 @@ class AudioRecorder {
         }
         this.stream =
           await navigator.mediaDevices.getUserMedia(basicConstraints);
-        console.log("Microphone access granted with basic constraints");
 
         // Setup track monitoring
         this.setupTrackMonitoring();
@@ -143,7 +136,6 @@ class AudioRecorder {
 
     // Monitor for track ended (mic disconnected)
     this.trackEndedHandler = () => {
-      console.log("Audio track ended - microphone disconnected!");
       if (this.isRecording && window.widget) {
         // Notify the widget that mic was disconnected
         window.widget.handleMicDisconnectDuringRecording();
@@ -157,8 +149,6 @@ class AudioRecorder {
 
     track.addEventListener("ended", this.trackEndedHandler);
     track.addEventListener("mute", this.trackMutedHandler);
-
-    console.log("Track monitoring setup complete");
   }
 
   /**
@@ -181,8 +171,6 @@ class AudioRecorder {
       track.removeEventListener("mute", this.trackMutedHandler);
       this.trackMutedHandler = null;
     }
-
-    console.log("Track monitoring cleaned up");
   }
 
   /**
@@ -191,11 +179,8 @@ class AudioRecorder {
    */
   async switchMicrophone(newDeviceId) {
     if (!this.isRecording) {
-      console.log("Not currently recording, nothing to switch");
       return;
     }
-
-    console.log("Switching microphone to:", newDeviceId);
 
     const wasRecording =
       this.mediaRecorder && this.mediaRecorder.state === "recording";
@@ -256,15 +241,11 @@ class AudioRecorder {
         // Restart recording
         if (wasRecording && !wasPaused) {
           this.mediaRecorder.start(1000);
-          console.log("Recording restarted with new microphone");
         } else if (wasPaused) {
           this.mediaRecorder.start(1000);
           this.mediaRecorder.pause();
-          console.log("Recording switched (paused state maintained)");
         }
       }
-
-      console.log("Microphone switched successfully");
     } catch (error) {
       console.error("Failed to switch microphone:", error);
       throw new Error(`Failed to switch microphone: ${error.message}`);
@@ -292,7 +273,6 @@ class AudioRecorder {
     // Determine best supported MIME type
     const mimeType = this.getSupportedMimeType();
     this.currentMimeType = mimeType;
-    console.log("Using MIME type:", mimeType);
 
     try {
       // Create MediaRecorder
@@ -320,8 +300,6 @@ class AudioRecorder {
 
       // Setup periodic chunk saving
       this.startChunkSaving();
-
-      console.log("Recording started");
     } catch (e) {
       console.error("MediaRecorder error:", e);
       throw new Error(`MediaRecorder failed: ${e.message}`);
@@ -378,7 +356,6 @@ class AudioRecorder {
         arrayBuffer,
         this.currentMimeType || this.mediaRecorder.mimeType,
       );
-      console.log("Chunk saved:", blob.size, "bytes");
 
       // Clear saved chunks
       this.chunks = [];
@@ -395,7 +372,6 @@ class AudioRecorder {
       this.mediaRecorder.pause();
       this.isPaused = true;
       cancelAnimationFrame(this.animationId);
-      console.log("Recording paused");
     }
   }
 
@@ -407,7 +383,6 @@ class AudioRecorder {
       this.mediaRecorder.resume();
       this.isPaused = false;
       this.drawWaveform();
-      console.log("Recording resumed");
     }
   }
 
@@ -451,7 +426,6 @@ class AudioRecorder {
           this.stream = null;
         }
 
-        console.log("Recording stopped");
         resolve(true);
       };
 
@@ -493,8 +467,6 @@ class AudioRecorder {
       this.stream.getTracks().forEach((track) => track.stop());
       this.stream = null;
     }
-
-    console.log("Recording cancelled");
   }
 
   /**

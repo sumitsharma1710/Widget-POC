@@ -1,4 +1,4 @@
-const { app, globalShortcut } = require("electron");
+const { app } = require("electron");
 const {
   createWidgetWindow,
   getWidgetWindow,
@@ -22,7 +22,6 @@ let preferences = null;
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  console.log("Another instance is already running. Exiting...");
   app.quit();
 } else {
   app.on("second-instance", () => {
@@ -40,8 +39,6 @@ if (!gotTheLock) {
 
   // App ready event
   app.whenReady().then(async () => {
-    console.log("App is ready, initializing...");
-
     // Request system permissions
     await requestSystemPermissions();
 
@@ -51,7 +48,6 @@ if (!gotTheLock) {
     // Check for crash recovery
     const recoveryData = await checkForRecovery();
     if (recoveryData) {
-      console.log("Found incomplete recording from previous session");
       try {
         const recovered = await recoverRecording(recoveryData);
         // We'll notify the window after it's created
@@ -74,20 +70,11 @@ if (!gotTheLock) {
 
     // Create system tray
     createTray();
-
-    // Register global hotkey (Ctrl+Shift+R to toggle widget)
-    globalShortcut.register("CommandOrControl+Shift+R", () => {
-      console.log("Global hotkey triggered");
-      toggleWidget();
-    });
-
-    console.log("Floating Meeting Widget initialized successfully");
   });
 
   // Cleanup on quit
   app.on("will-quit", () => {
     // Unregister all shortcuts
-    globalShortcut.unregisterAll();
   });
 
   // Keep app running even when all windows are closed (for system tray)
