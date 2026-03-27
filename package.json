@@ -1,0 +1,21 @@
+{
+  "name": "floating-meeting-widget",
+  "version": "1.0.0",
+  "description": "Floating Meeting Widget POC - Audio recording for physical meetings",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "dev": "electron . --enable-logging --no-sandbox"
+  },
+  "keywords": [
+    "electron",
+    "meeting",
+    "recorder",
+    "audio"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^29.0.0"
+  }
+}

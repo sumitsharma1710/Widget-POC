@@ -1,0 +1,660 @@
+/* Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  background-color: transparent;
+  pointer-events: none; /* Let clicks pass through by default */
+}
+
+.interactive {
+  pointer-events: auto; /* Capture clicks on interactive elements */
+}
+
+button {
+  -webkit-app-region: no-drag;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background: none;
+}
+
+/* Compact Controls - Initial State */
+.compact-controls {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.compact-controls.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.9);
+}
+
+/* Drag Handle */
+.drag-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  -webkit-app-region: drag;
+  cursor: move;
+}
+
+/* Error Display - Floating notification */
+.error-display {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  background: rgba(183, 49, 49, 0.98);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  color: #fff;
+  transition: all 0.3s ease;
+  z-index: 2000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-height: 40px;
+  max-height: 50px;
+  overflow: auto;
+}
+
+.error-display.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
+}
+
+.error-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.error-message {
+  flex: 1;
+  font-size: 11px;
+}
+
+.error-close-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.error-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Icon Buttons */
+.icon-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* Record Button Icon */
+.record-icon {
+  width: 12px;
+  height: 12px;
+  background: #ff4444;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 68, 68, 0);
+  }
+}
+
+/* List Button Icon */
+.list-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.list-icon span {
+  width: 14px;
+  height: 2px;
+  background: #fff;
+  border-radius: 1px;
+}
+
+/* Recording Panel - Pill Widget Container */
+.recording-panel {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.recording-panel.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.9);
+}
+
+/* Widget Wrapper */
+.widget-wrapper {
+  position: relative;
+}
+
+/* --- Main Widget Pill --- */
+.audio-widget {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 6px;
+  border-radius: 9999px;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+/* Mic Trigger Button */
+.mic-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
+  background-color: rgba(38, 38, 38, 0.5);
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+  color: #a3a3a3;
+}
+
+.mic-trigger:hover {
+  background-color: #262626;
+  color: #f5f5f5;
+}
+
+.mic-trigger svg {
+  transition: transform 0.2s;
+}
+
+/* Vertical Divider */
+.divider {
+  width: 1px;
+  height: 20px;
+  background-color: #262626;
+  margin: 0 8px;
+}
+
+.divider.small-margin {
+  margin: 0 4px;
+}
+
+/* Status & Timer */
+.status-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 12px;
+}
+
+.recording-dot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 10px;
+  width: 10px;
+}
+
+.dot-ping {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  border-radius: 50%;
+  background-color: #ef4444;
+  opacity: 0.75;
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.dot-solid {
+  position: relative;
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
+  background-color: #ef4444;
+}
+
+.timer {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  color: #f5f5f5;
+}
+
+/* Action Buttons */
+.actions-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 4px;
+}
+
+.action-btn {
+  padding: 4px 5px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  color: #a3a3a3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  color: #ffffff;
+  background-color: #262626;
+}
+
+.action-btn.btn-cancel {
+  color: rgba(248, 113, 113, 1);
+  transition: all 0.3s ease;
+}
+.action-btn.btn-cancel:hover {
+  color: #ffffff;
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+.action-btn.btn-finish {
+  color: #4ade80;
+  transition: all 0.3s ease;
+}
+.action-btn.btn-finish:hover {
+  color: #ffffff;
+  background-color: rgba(74, 222, 128, 0.2);
+}
+
+/* --- Dropdown Menu --- */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 2px;
+  width: 255px;
+  background-color: #171717;
+  border: 1px solid #262626;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  z-index: 20;
+
+  /* Visible by default, hidden via .hidden class */
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+/* Transparent bridge to prevent mouse-leave when moving from button to dropdown */
+.dropdown-menu::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  background: transparent;
+}
+
+.dropdown-menu.hidden {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+
+.dropdown-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(38, 38, 38, 0.5);
+  background-color: rgba(38, 38, 38, 0.3);
+}
+
+.dropdown-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #737373;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mic-list {
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.mic-option {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: left;
+  color: #a3a3a3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  background: none;
+}
+
+.mic-option:hover {
+  background-color: rgba(38, 38, 38, 0.5);
+  color: #f5f5f5;
+}
+
+.mic-option.selected {
+  background-color: #262626;
+  color: #f5f5f5;
+}
+
+.mic-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dropdown-footer {
+  padding: 4px;
+  border-top: 1px solid rgba(38, 38, 38, 0.5);
+}
+
+.settings-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #a3a3a3;
+  justify-content: flex-start;
+  gap: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.settings-btn:hover {
+  background-color: rgba(38, 38, 38, 0.5);
+  color: #f5f5f5;
+}
+
+.mic-name-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 8px;
+}
+
+/* SVG Icon Visibility Toggle */
+.pause-icon-svg.hidden,
+.play-icon-svg.hidden {
+  display: none;
+}
+
+/* Utilities */
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* Keyframes */
+@keyframes ping {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Recordings Panel */
+.recordings-panel {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  width: 280px;
+  max-height: 280px;
+  background: rgba(20, 20, 30, 0.98); /* Opaque dark background */
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 8px;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.recordings-panel.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.9) translateY(-10px);
+}
+
+/* Panel Header */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.panel-header h3 {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.close-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Recordings List */
+.recordings-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 280px;
+}
+
+/* Custom Scrollbar */
+.recordings-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recordings-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.recordings-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.recordings-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Recording Item */
+.recording-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 6px;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+  animation: slideIn 0.3s ease;
+}
+
+.recording-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.recording-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.recording-name {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recording-date {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  margin-left: auto;
+}
+
+.recording-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.play-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(79, 70, 229, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.play-btn:hover {
+  background: rgba(79, 70, 229, 0.5);
+}
+
+.play-icon {
+  width: 0;
+  height: 0;
+  border-left: 8px solid #4f46e5;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  margin-left: 2px;
+}
+
+.recording-duration {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  min-width: 60px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* See More Button */
+.see-more-btn {
+  width: 100%;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.see-more-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
